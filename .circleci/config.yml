@@ -1,0 +1,22 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.7
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+      - restore_cache:
+          key: back-deps-{{ checksum "Pipfile.lock" }}
+      - run:
+          command: |
+            sudo pip install tox
+            tox
+      - save_cache:
+          key: back-deps-{{ checksum "Pipfile.lock" }}
+          paths:
+            - .tox/
+            - /usr/local/bin
+            - /usr/local/lib/python3.7/site-packages
