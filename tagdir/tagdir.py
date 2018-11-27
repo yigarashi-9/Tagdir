@@ -3,9 +3,9 @@ import pathlib
 import stat
 
 from sqlalchemy import and_, func
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
+from .db import session_scope
 from .fusepy.fuse import FuseOSError
 from .fusepy.logging import LoggingMixIn
 from .fusepy.loopback import Loopback
@@ -14,44 +14,35 @@ from .utils import parse_path, prepare_passthrough
 
 
 class Tagdir(LoggingMixIn, Loopback):
-    def __init__(self, engine):
-        super().__init__()
-        self.engine = engine
-
     def __call__(self, op, path, *args):
         self.log(self, op, path, *args)
 
-        self.session = sessionmaker(bind=self.engine)()
-
-        try:
+        with session_scope() as session:
             if hasattr(self, op):
-                res = getattr(self, op)(path, *args)
-            else:
-                tag_strs, ent_name, rest_path = parse_path(path)
+                # Operations specific to tagdir
+                self.session = session
+                return getattr(self, op)(path, *args)
 
-                if tag_strs == []:
-                    raise FuseOSError(ENOENT)
+            # Pass through begins
+            tag_strs, ent_name, rest_path = parse_path(path)
 
-                try:
-                    tags = [self.session.query(Tag)
-                                .filter(Tag.name == tag_str).one()
-                            for tag_str in tag_strs]
-                except NoResultFound:
-                    raise FuseOSError(ENOENT)
+            if not tag_strs:
+                raise FuseOSError(ENOENT)
 
-                if ent_name is None:
-                    raise FuseOSError(ENOENT)
+            try:
+                tags = [session.query(Tag).filter(Tag.name == tag_str).one()
+                        for tag_str in tag_strs]
+            except NoResultFound:
+                raise FuseOSError(ENOENT)
 
-                path = prepare_passthrough(self.session, ent_name,
-                                           rest_path, tags)
-                if path is None:
-                    raise FuseOSError(ENOENT)
+            if ent_name is None:
+                raise FuseOSError(ENOENT)
 
-                res = super().__call__(op, path, *args)
-            return res
-        finally:
-            self.session.commit()
-            self.session.close()
+            path = prepare_passthrough(session, ent_name, rest_path, tags)
+            if path is None:
+                raise FuseOSError(ENOENT)
+
+            return super().__call__(op, path, *args)
 
     def access(self, path, mode):
         if path == "/":
@@ -167,7 +158,7 @@ class Tagdir(LoggingMixIn, Loopback):
         if ent_name is None:
             # remove tags
             for tag in tags:
-                tag.remove()
+                tag.remove(self.session)
         else:
             # pass through
             path = prepare_passthrough(self.session, ent_name, rest_path, tags)

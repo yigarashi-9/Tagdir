@@ -1,7 +1,6 @@
 import logging
 
-from sqlalchemy import create_engine
-
+from .db import engine
 from .fusepy.fuse import FUSE
 from .models import Base
 from .tagdir import Tagdir
@@ -19,11 +18,10 @@ def main():
     except OSError:
         pass
 
-    engine = create_engine('sqlite:///../test.db', echo=False)
     Base.metadata.create_all(engine)
 
     logging.basicConfig(level=logging.DEBUG)
-    FUSE(Tagdir(engine), args.mount, foreground=True, allow_other=True)
+    FUSE(Tagdir(), args.mount, foreground=True, allow_other=True)
 
 
 if __name__ == '__main__':

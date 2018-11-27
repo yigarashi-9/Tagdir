@@ -45,5 +45,5 @@ class Tag(Base):
         """
         session.delete(self)
         for entity in self.entities:
-            if entity.tags == []:
+            if not entity.tags:
                 session.delete(entity)
