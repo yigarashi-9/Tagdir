@@ -6,35 +6,34 @@ from sqlalchemy.orm.exc import NoResultFound
 from .models import Entity
 
 
-def parse_path(s) -> (List[str], str, pathlib.Path):
-    if s == "/":
-        return [], None, None
-
-    s = s[1:]  # remove head "/"
-
-    tag_strs = []
+def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
+    """
+    Pre-condition: s[0] == "/"
+    Expected form of path: /@tag_1/.../@tag_n/ent_name/rest_path
+    """
+    raw_tags = []
     ent_name = None
     rest_path = None
 
-    ss = s.split("/")
+    parts = pathlib.Path(raw_path).parts[1:]
     index = 0
 
-    for s in ss:
-        if len(s) > 0 and s[0] == "@":
-            tag_strs.append(s[1:])
+    for part in parts:
+        if part[0] == "@":
+            raw_tags.append(part[1:])
             index += 1
         else:
             break
 
-    ss = ss[index:]
+    rest = parts[index:]
 
-    if len(ss) > 0:
-        ent_name = ss[0]
+    if len(rest) > 0:
+        ent_name = rest[0]
 
-    if len(ss) > 1:
-        rest_path = pathlib.Path('/'.join(ss[1:]))
+    if len(rest) > 1:
+        rest_path = pathlib.Path('/'.join(rest[1:]))
 
-    return tag_strs, ent_name, rest_path
+    return raw_tags, ent_name, rest_path
 
 
 def prepare_passthrough(session, ent_name: str, rest_path: pathlib.Path, tags):

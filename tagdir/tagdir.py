@@ -24,14 +24,14 @@ class Tagdir(LoggingMixIn, Loopback):
                 return getattr(self, op)(path, *args)
 
             # Pass through begins
-            tag_strs, ent_name, rest_path = parse_path(path)
+            raw_tags, ent_name, rest_path = parse_path(path)
 
-            if not tag_strs:
+            if not raw_tags:
                 raise FuseOSError(ENOENT)
 
             try:
                 tags = [session.query(Tag).filter(Tag.name == tag_str).one()
-                        for tag_str in tag_strs]
+                        for tag_str in raw_tags]
             except NoResultFound:
                 raise FuseOSError(ENOENT)
 
@@ -48,14 +48,14 @@ class Tagdir(LoggingMixIn, Loopback):
         if path == "/":
             return 0
 
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             raise FuseOSError(ENOENT)
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -75,14 +75,14 @@ class Tagdir(LoggingMixIn, Loopback):
             st['st_mode'] = 0o0644 | stat.S_IFDIR
             return st
 
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             raise FuseOSError(ENOENT)
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -111,9 +111,9 @@ class Tagdir(LoggingMixIn, Loopback):
         return super().getattr(path, fh)
 
     def mkdir(self, path, mode):
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             # TODO: Is ENOENT suitable?
             raise FuseOSError(ENOENT)
 
@@ -123,7 +123,7 @@ class Tagdir(LoggingMixIn, Loopback):
 
         if ent_name is None:
             # create new tags
-            for tag_str in tag_strs:
+            for tag_str in raw_tags:
                 try:
                     self.session.query(Tag).filter(Tag.name == tag_str).one()
                 except NoResultFound:
@@ -133,7 +133,7 @@ class Tagdir(LoggingMixIn, Loopback):
             try:
                 tags = [self.session.query(Tag)
                             .filter(Tag.name == tag_str).one()
-                        for tag_str in tag_strs]
+                        for tag_str in raw_tags]
             except NoResultFound:
                 raise FuseOSError(ENOENT)
 
@@ -144,14 +144,14 @@ class Tagdir(LoggingMixIn, Loopback):
             return super().mkdir(path, mode)
 
     def rmdir(self, path):
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             raise FuseOSError(ENOENT)
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -171,14 +171,14 @@ class Tagdir(LoggingMixIn, Loopback):
         """
         Suppose source is an absolute path
         """
-        tag_strs, ent_name, rest_path = parse_path(target)
+        raw_tags, ent_name, rest_path = parse_path(target)
 
-        if tag_strs == []:
+        if raw_tags == []:
             raise FuseOSError(ENOENT)
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -209,14 +209,14 @@ class Tagdir(LoggingMixIn, Loopback):
             return super().symlink(path, source)
 
     def unlink(self, path):
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == [] or ent_name is None:
+        if raw_tags == [] or ent_name is None:
             raise FuseOSError(EINVAL)
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -243,9 +243,9 @@ class Tagdir(LoggingMixIn, Loopback):
             return super().unlink(path)
 
     def readlink(self, path):
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             raise FuseOSError(ENOENT)
 
         if ent_name is None:
@@ -253,7 +253,7 @@ class Tagdir(LoggingMixIn, Loopback):
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
@@ -278,9 +278,9 @@ class Tagdir(LoggingMixIn, Loopback):
             return super().readlink(path)
 
     def readdir(self, path, fh):
-        tag_strs, ent_name, rest_path = parse_path(path)
+        raw_tags, ent_name, rest_path = parse_path(path)
 
-        if tag_strs == []:
+        if raw_tags == []:
             if ent_name is None and rest_path is None:
                 # list all tags
                 res = ["@" + name[0] for name in self.session.query(Tag.name)]
@@ -290,7 +290,7 @@ class Tagdir(LoggingMixIn, Loopback):
 
         try:
             tags = [self.session.query(Tag).filter(Tag.name == tag_str).one()
-                    for tag_str in tag_strs]
+                    for tag_str in raw_tags]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
