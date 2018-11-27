@@ -1,3 +1,0 @@
-- tag の取得を parse_path に押し込んで適切な例外を投げる
-  - parse_path を pathlib を使ってリファクタリング
-- Session の操作が必要な部分を露出させない
