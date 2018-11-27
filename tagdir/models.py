@@ -11,7 +11,13 @@ tagging = Table("tagging", Base.metadata,
                 Column('tag_id', ForeignKey('tags.id'), primary_key=True))
 
 
-class Entity(Base):
+class ModelUtils:
+    @classmethod
+    def get_by_name(cls, session, name):
+        return session.query(cls).filter(cls.name == name).one()
+
+
+class Entity(Base, ModelUtils):
     __tablename__ = "entities"
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
@@ -26,8 +32,14 @@ class Entity(Base):
     def __repr__(self):
         return self.name
 
+    def has_tags(self, tags):
+        for tag in tags:
+            if tag not in self.tags:
+                return False
+        return True
 
-class Tag(Base):
+
+class Tag(Base, ModelUtils):
     __tablename__ = "tags"
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)

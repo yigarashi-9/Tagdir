@@ -1,9 +1,10 @@
+import os
 import pathlib
 from typing import List
 
 from sqlalchemy.orm.exc import NoResultFound
 
-from .models import Entity
+from .models import Entity, Tag
 
 
 def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
@@ -11,7 +12,7 @@ def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
     Pre-condition: s[0] == "/"
     Expected form of path: /@tag_1/.../@tag_n/ent_name/rest_path
     """
-    raw_tags = []
+    tag_names = []
     ent_name = None
     rest_path = None
 
@@ -20,7 +21,7 @@ def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
 
     for part in parts:
         if part[0] == "@":
-            raw_tags.append(part[1:])
+            tag_names.append(part[1:])
             index += 1
         else:
             break
@@ -33,21 +34,24 @@ def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
     if len(rest) > 1:
         rest_path = pathlib.Path('/'.join(rest[1:]))
 
-    return raw_tags, ent_name, rest_path
+    return tag_names, ent_name, rest_path
 
 
-def prepare_passthrough(session, ent_name: str, rest_path: pathlib.Path, tags):
+def get_entity_path(session, tags: List[Tag],
+                    ent_name: str, rest_path: pathlib.Path) -> str:
+    """
+    Return a path to base file system
+    """
     try:
-        entity = session.query(Entity).filter(Entity.name == ent_name).one()
+        entity = Entity.get_by_name(session, ent_name)
     except NoResultFound:
         return None
 
-    for tag in tags:
-        if tag not in entity.tags:
-            return None
+    if not entity.has_tags(tags):
+        return None
 
-    path = pathlib.Path(entity.path)
-    if rest_path is not None:
-        path = path / rest_path
+    path = entity.path
+    if rest_path:
+        path = os.path.join(path, rest_path)
 
     return path
