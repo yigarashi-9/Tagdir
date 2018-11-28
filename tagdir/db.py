@@ -1,18 +1,10 @@
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-
-SQLITE3_PATH = "../test.db"
-engine = create_engine("sqlite:///" + SQLITE3_PATH, echo=False)
-Session = sessionmaker(bind=engine)
-
 
 @contextmanager
-def session_scope():
+def session_scope(session_cls):
     """Provide a transactional scope around a series of operations."""
-    session = Session()
+    session = session_cls()
     try:
         yield session
         session.commit()

@@ -3,21 +3,27 @@ import pathlib
 import stat
 
 from sqlalchemy import func
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from .db import session_scope
 from .fusepy.fuse import FuseOSError
 from .fusepy.logging import LoggingMixIn
 from .fusepy.loopback import Loopback
-from .models import Entity, Tag
+from .models import Base, Entity, Tag
 from .utils import get_entity_path, parse_path
 
 
 class Tagdir(LoggingMixIn, Loopback):
+    def __init__(self, engine):
+        Base.metadata.create_all(engine)
+        self.Session = sessionmaker(bind=engine)
+        super().__init__()
+
     def __call__(self, op, path, *args):
         self.log(self, op, path, *args)
 
-        with session_scope() as session:
+        with session_scope(self.Session) as session:
             if hasattr(self, op):
                 # Operations specific to tagdir
                 self.session = session
@@ -65,7 +71,11 @@ class Tagdir(LoggingMixIn, Loopback):
         path = get_entity_path(self.session, tags, ent_name, rest_path)
         if path is None:
             raise FuseOSError(ENOENT)
-        return super().access(path, mode)
+
+        if rest_path is None:
+            return 0
+        else:
+            return super().access(path, mode)
 
     def getattr(self, path, fh=None):
         """
