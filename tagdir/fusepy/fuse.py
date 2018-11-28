@@ -26,6 +26,7 @@ from signal import signal, SIGINT, SIG_DFL
 from stat import S_IFDIR
 from traceback import print_exc
 
+from .exceptions import FuseOSError
 
 try:
     from functools import partial
@@ -607,11 +608,6 @@ def fuse_exit():
     '''
     fuse_ptr = ctypes.c_void_p(_libfuse.fuse_get_context().contents.fuse)
     _libfuse.fuse_exit(fuse_ptr)
-
-
-class FuseOSError(OSError):
-    def __init__(self, errno):
-        super(FuseOSError, self).__init__(errno, os.strerror(errno))
 
 
 class FUSE(object):

@@ -2,9 +2,8 @@ from errno import ENOENT
 
 import pytest
 
-from .fixture import setup_tagdir_fixture
-from tagdir.fusepy.fuse import FuseOSError
-from tagdir.fusepy.loopback import Loopback
+from .conftest import setup_tagdir_test
+from tagdir.fusepy.exceptions import FuseOSError
 from tagdir.models import Entity, Tag
 
 
@@ -16,14 +15,8 @@ def setup_func(session):
     session.add_all([tag1, tag2, entity1, entity2])
 
 
-setup_tagdir_fixture(setup_func)
-
-
-@pytest.fixture(autouse=True)
-def access_mock(mocker):
-    access_mock = mocker.patch.object(Loopback, "access")
-    access_mock.return_value = 0
-    return access_mock
+# Dynamically define tagdir and method_mock fixtures
+setup_tagdir_test(setup_func, "access")
 
 
 def test_root(tagdir):
@@ -42,9 +35,9 @@ def test_existent_entity2(tagdir):
     assert tagdir.access("/@tag1/@tag2/entity1", 0) == 0
 
 
-def test_pass_through(tagdir, access_mock):
-    assert tagdir.access("/@tag1/entity1/test", 0) == 0
-    access_mock.assert_called_with("/path1/test", 0)
+def test_pass_through(tagdir, method_mock):
+    tagdir.access("/@tag1/entity1/test", 0)
+    method_mock.assert_called_with("/path1/test", 0)
 
 
 def test_nonexistent_tag(tagdir):

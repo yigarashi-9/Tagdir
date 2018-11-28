@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from .db import session_scope
-from .fusepy.fuse import FuseOSError
+from .fusepy.exceptions import FuseOSError
 from .fusepy.logging import LoggingMixIn
 from .fusepy.loopback import Loopback
 from .models import Base, Entity, Tag

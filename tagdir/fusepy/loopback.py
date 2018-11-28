@@ -2,7 +2,8 @@ import os
 from errno import EACCES
 from threading import Lock
 
-from .fuse import FuseOSError, Operations
+from .exceptions import FuseOSError
+from .fuse import Operations
 
 
 class Loopback(Operations):
