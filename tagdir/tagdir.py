@@ -1,6 +1,6 @@
 from errno import EINVAL, ENOENT
+from os.path import join
 import pathlib
-import stat
 
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
@@ -10,14 +10,21 @@ from .db import session_scope
 from .fusepy.exceptions import FuseOSError
 from .fusepy.logging import LoggingMixIn
 from .fusepy.loopback import Loopback
-from .models import Base, Entity, Tag
-from .utils import get_entity_path, parse_path
+from .models import Attr, Base, Entity, Tag
+from .utils import parse_path
 
 
 class Tagdir(LoggingMixIn, Loopback):
     def __init__(self, engine):
         Base.metadata.create_all(engine)
         self.Session = sessionmaker(bind=engine)
+
+        with session_scope(self.Session) as session:
+            # Create root attr
+            root_attr = Attr.get_root_attr(session)
+            if not root_attr:
+                session.add(Attr.new_root_attr())
+
         super().__init__()
 
     def __call__(self, op, path, *args):
@@ -44,12 +51,18 @@ class Tagdir(LoggingMixIn, Loopback):
             if ent_name is None:
                 raise FuseOSError(ENOENT)
 
-            path = get_entity_path(session, tags, ent_name, rest_path)
-            if path is None:
+            entity = Entity.get_if_valid(self.session, ent_name, tags)
+            if entity is None:
                 raise FuseOSError(ENOENT)
+
+            # TODO: Investigate whether pass through is appropriate
+            path = entity.path
+            if rest_path is not None:
+                path = join(path, rest_path)
             return super().__call__(op, path, *args)
 
     def access(self, path, mode):
+        # TODO: change st_atim
         if path == "/":
             return 0
 
@@ -68,14 +81,15 @@ class Tagdir(LoggingMixIn, Loopback):
             return 0
 
         # Pass through
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+
+        if entity is None:
             raise FuseOSError(ENOENT)
 
         if rest_path is None:
             return 0
         else:
-            return super().access(path, mode)
+            return super().access(join(entity.path, rest_path), mode)
 
     def getattr(self, path, fh=None):
         """
@@ -84,12 +98,8 @@ class Tagdir(LoggingMixIn, Loopback):
         - /@tag_1/../@tag_n/ent_name, then treat as a symlink
         - /@tag_1/../@tag_n/ent_name/rest_path, then pass through
         """
-        # TODO: Return rich information
-        st = {}
-
         if path == "/":
-            st['st_mode'] = 0o0644 | stat.S_IFDIR
-            return st
+            return Attr.get_root_attr(self.session).as_dict()
 
         tag_names, ent_name, rest_path = parse_path(path)
 
@@ -103,21 +113,18 @@ class Tagdir(LoggingMixIn, Loopback):
             raise FuseOSError(ENOENT)
 
         if ent_name is None:
-            # Return attribute for a tag
-            st['st_mode'] = 0o0644 | stat.S_IFDIR
-            return st
+            return tags[-1].attr.as_dict()
 
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+
+        if entity is None:
             raise FuseOSError(ENOENT)
 
         if rest_path is None:
-            # Return attribute for a link to an entity
-            st['st_mode'] = 0o0644 | stat.S_IFLNK
-            return st
+            # Return attribute for an entity
+            return entity.attr.as_dict()
         else:
-            # Pass through
-            return super().getattr(path, fh)
+            return super().getattr(join(entity.path, rest_path), fh)
 
     def mkdir(self, path, mode):
         """
@@ -138,7 +145,9 @@ class Tagdir(LoggingMixIn, Loopback):
                 try:
                     Tag.get_by_name(self.session, tag_name)
                 except NoResultFound:
-                    self.session.add(Tag(tag_name))
+                    attr = Attr.new_tag_attr()
+                    tag = Tag(tag_name, attr)
+                    self.session.add_all([tag, attr])
             return None
 
         # Pass through
@@ -148,10 +157,11 @@ class Tagdir(LoggingMixIn, Loopback):
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
-        return super().mkdir(path, mode)
+
+        return super().mkdir(join(entity.path, rest_path), mode)
 
     def rmdir(self, path):
         """
@@ -178,10 +188,11 @@ class Tagdir(LoggingMixIn, Loopback):
             return None
 
         # Pass through
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
-        return super().rmdir(path)
+
+        return super().rmdir(join(entity.path, rest_path))
 
     def symlink(self, target, source):
         """
@@ -212,8 +223,9 @@ class Tagdir(LoggingMixIn, Loopback):
             try:
                 entity = Entity.get_by_name(self.session, ent_name)
             except NoResultFound:
-                entity = Entity(source.name, str(source), [])
-                self.session.add(entity)
+                attr = Attr.new_entity_attr()
+                entity = Entity(source.name, attr, str(source), [])
+                self.session.add_all([entity, attr])
 
             if entity.path != str(source):
                 # Buggy state: multiple paths for one entity
@@ -226,10 +238,11 @@ class Tagdir(LoggingMixIn, Loopback):
             return None
 
         # Pass through
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
-        return super().symlink(path, source)
+
+        return super().symlink(join(entity.path, rest_path), source)
 
     def unlink(self, path):
         """
@@ -259,13 +272,18 @@ class Tagdir(LoggingMixIn, Loopback):
 
             for tag in tags:
                 entity.tags.remove(tag)
+
+            if not entity.tags:
+                self.session.delete(entity)
+
             return None
 
         # Pass through
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
-        return super().unlink(path)
+
+        return super().unlink(join(entity.path, rest_path))
 
     def readlink(self, path):
         """
@@ -282,15 +300,15 @@ class Tagdir(LoggingMixIn, Loopback):
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
 
         if rest_path is None:
-            return path
+            return entity.path
         else:
             # Pass through
-            return super().readlink(path)
+            return super().readlink(join(entity.path, rest_path))
 
     def readdir(self, path, fh):
         """
@@ -323,7 +341,11 @@ class Tagdir(LoggingMixIn, Loopback):
             return [e for e, in res]
 
         # Pass through
-        path = get_entity_path(self.session, tags, ent_name, rest_path)
-        if path is None:
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        if entity is None:
             raise FuseOSError(ENOENT)
+
+        path = entity.path
+        if rest_path:
+            path = join(path, rest_path)
         return super().readdir(path, fh)

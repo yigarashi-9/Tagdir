@@ -1,10 +1,5 @@
-import os
 import pathlib
 from typing import List
-
-from sqlalchemy.orm.exc import NoResultFound
-
-from .models import Entity, Tag
 
 
 def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
@@ -35,23 +30,3 @@ def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
         rest_path = pathlib.Path('/'.join(rest[1:]))
 
     return tag_names, ent_name, rest_path
-
-
-def get_entity_path(session, tags: List[Tag],
-                    ent_name: str, rest_path: pathlib.Path) -> str:
-    """
-    Return a path to base file system
-    """
-    try:
-        entity = Entity.get_by_name(session, ent_name)
-    except NoResultFound:
-        return None
-
-    if not entity.has_tags(tags):
-        return None
-
-    path = entity.path
-    if rest_path:
-        path = os.path.join(path, rest_path)
-
-    return path

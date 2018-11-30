@@ -4,15 +4,19 @@ import pytest
 
 from .conftest import setup_tagdir_test
 from tagdir.fusepy.exceptions import FuseOSError
-from tagdir.models import Entity, Tag
+from tagdir.models import Attr, Entity, Tag
 
 
 def setup_func(session):
-    tag1 = Tag("tag1")
-    tag2 = Tag("tag2")
-    entity1 = Entity("entity1", "/path1", [tag1, tag2])
-    entity2 = Entity("entity2", "/path2", [])
-    session.add_all([tag1, tag2, entity1, entity2])
+    attr1 = Attr.new_tag_attr()
+    attr2 = Attr.new_tag_attr()
+    tag1 = Tag("tag1", attr1)
+    tag2 = Tag("tag2", attr2)
+    attr3 = Attr.new_entity_attr()
+    attr4 = Attr.new_entity_attr()
+    entity1 = Entity("entity1", attr3, "/path1", [tag1, tag2])
+    entity2 = Entity("entity2", attr4, "/path2", [])
+    session.add_all([attr1, attr2, attr3, attr4, tag1, tag2, entity1, entity2])
 
 
 # Dynamically define tagdir and method_mock fixtures

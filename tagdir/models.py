@@ -1,6 +1,13 @@
+import os
+import stat
+import time
+
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm.exc import NoResultFound
+
+from .fusepy.fuse import c_timespec
 
 
 Base = declarative_base()
@@ -11,26 +18,95 @@ tagging = Table("tagging", Base.metadata,
                 Column('tag_id', ForeignKey('tags.id'), primary_key=True))
 
 
-class ModelUtils:
+class Attr(Base):
+    __tablename__ = "attrs"
+    id = Column(Integer, primary_key=True)
+    st_mode = Column(Integer)
+    st_uid = Column(Integer)
+    st_gid = Column(Integer)
+    st_atimespec = Column(Integer)
+    st_mtimespec = Column(Integer)
+    st_ctimespec = Column(Integer)
+
+    def __init__(self, st_mode):
+        self.st_mode = st_mode
+        self.st_uid = os.getuid()
+        self.st_gid = os.getgid()
+        now = int(time.time())
+        self.st_atimespec = now
+        self.st_mtimespec = now
+        self.st_ctimespec = now
+
+    @staticmethod
+    def new_tag_attr():
+        return Attr(0o644 | stat.S_IFDIR)
+
+    @staticmethod
+    def new_entity_attr():
+        return Attr(0o644 | stat.S_IFLNK)
+
+    @staticmethod
+    def new_root_attr():
+        return Attr(0o644 | stat.S_IFDIR)
+
+    @staticmethod
+    def get_root_attr(session):
+        return session.query(Attr).get(1)
+
+    def as_dict(self):
+        return {"st_mode": self.st_mode, "st_uid": self.st_uid,
+                "st_gid": self.st_gid,
+                "st_atimespec": c_timespec(self.st_atimespec, 0),
+                "st_mtimespec": c_timespec(self.st_mtimespec, 0),
+                "st_ctimespec": c_timespec(self.st_ctimespec, 0)}
+
+
+class NodeMixIn:
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True)
+
+    @declared_attr
+    def attr_id(cls):
+        return Column(Integer, ForeignKey('attrs.id'))
+
+    @declared_attr
+    def attr(cls):
+        return relationship("Attr", cascade="delete",
+                            backref=backref(cls.__tablename__, uselist=False))
+
     @classmethod
     def get_by_name(cls, session, name):
         return session.query(cls).filter(cls.name == name).one()
 
 
-class Entity(Base, ModelUtils):
+class Entity(NodeMixIn, Base):
     __tablename__ = "entities"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)
     path = Column(String, unique=True)
     tags = relationship("Tag", secondary=tagging, back_populates="entities")
 
-    def __init__(self, name, path, tags):
+    def __init__(self, name, attr, path, tags):
         self.name = name
+        self.attr = attr
         self.path = path
         self.tags = tags
 
     def __repr__(self):
         return self.name
+
+    @staticmethod
+    def get_if_valid(session, ent_name, tags):
+        """
+        Return entity only if valid tags are specified
+        """
+        try:
+            entity = Entity.get_by_name(session, ent_name)
+        except NoResultFound:
+            return None
+
+        if not entity.has_tags(tags):
+            return None
+
+        return entity
 
     def has_tags(self, tags):
         for tag in tags:
@@ -39,14 +115,13 @@ class Entity(Base, ModelUtils):
         return True
 
 
-class Tag(Base, ModelUtils):
+class Tag(NodeMixIn, Base):
     __tablename__ = "tags"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True)
     entities = relationship("Entity", secondary=tagging, back_populates="tags")
 
-    def __init__(self, name):
+    def __init__(self, name, attr):
         self.name = name
+        self.attr = attr
 
     def __str__(self):
         return "@" + self.name

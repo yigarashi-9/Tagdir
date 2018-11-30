@@ -14,11 +14,11 @@ def main():
 
     import os
     try:
-        os.remove("../test.db")
+        os.remove("test.db")
     except OSError:
         pass
 
-    engine = create_engine("sqlite:///../test.db", echo=False)
+    engine = create_engine("sqlite:///test.db", echo=False)
 
     logging.basicConfig(level=logging.DEBUG)
     FUSE(Tagdir(engine), args.mount, foreground=True, allow_other=True)
