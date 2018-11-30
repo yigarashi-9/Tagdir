@@ -7,8 +7,6 @@ from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.orm.exc import NoResultFound
 
-from .fusepy.fuse import c_timespec
-
 
 Base = declarative_base()
 
@@ -54,6 +52,7 @@ class Attr(Base):
         return session.query(Attr).get(1)
 
     def as_dict(self):
+        from .fusepy.fuse import c_timespec
         return {"st_mode": self.st_mode, "st_uid": self.st_uid,
                 "st_gid": self.st_gid,
                 "st_atimespec": c_timespec(self.st_atimespec, 0),
