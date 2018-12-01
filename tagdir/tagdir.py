@@ -93,10 +93,7 @@ class Tagdir(LoggingMixIn, Loopback):
 
     def getattr(self, path, fh=None):
         """
-        If path is
-        - /@tag_1/../@tag_n, then treat as a directory
-        - /@tag_1/../@tag_n/ent_name, then treat as a symlink
-        - /@tag_1/../@tag_n/ent_name/rest_path, then pass through
+        Return an attr dict corresponding to the path
         """
         if path == "/":
             return Attr.get_root_attr(self.session).as_dict()
