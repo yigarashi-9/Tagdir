@@ -1,4 +1,5 @@
 from errno import EINVAL, ENOENT
+import logging
 from os.path import join
 import pathlib
 
@@ -8,14 +9,20 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from .db import session_scope
 from .fusepy.exceptions import FuseOSError
-from .fusepy.logging import LoggingMixIn
 from .fusepy.loopback import Loopback
+from .logging import tagdir_debug_handler
 from .models import Attr, Base, Entity, Tag
 from .utils import parse_path
 
 
-class Tagdir(LoggingMixIn, Loopback):
+class Tagdir(Loopback):
     def __init__(self, engine):
+        logger = logging.getLogger(__name__)
+        logger.propagate = False
+        logger.setLevel(logging.DEBUG)
+        logger.addHandler(tagdir_debug_handler())
+        self.logger = logger
+
         Base.metadata.create_all(engine)
         self.Session = sessionmaker(bind=engine)
 
@@ -28,7 +35,8 @@ class Tagdir(LoggingMixIn, Loopback):
         super().__init__()
 
     def __call__(self, op, path, *args):
-        self.log(self, op, path, *args)
+        extra = {"op": str(op), "path": str(path), "arguments": repr(args)}
+        self.logger.debug("", extra=extra)
 
         with session_scope(self.Session) as session:
             if hasattr(self, op):
