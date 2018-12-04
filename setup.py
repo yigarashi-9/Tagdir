@@ -20,4 +20,5 @@ setuptools.setup(
         "Operating System :: Unix",
         "Topic :: System :: Filesystems"
     ],
+    entry_points={'console_scripts': ['tagdir = tagdir.cli:main']}
 )
