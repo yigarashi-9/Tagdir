@@ -18,7 +18,8 @@ def tagdir_debug_handler():
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     debug_formatter = logging.Formatter(
-        "%(levelname)s (%(id)d): %(op)s %(path)s %(arguments)s %(message)s")
+        "%(levelname)s %(name)s (%(id)d): %(op)s "
+        "%(path)s %(arguments)s %(message)s")
     ch.setFormatter(debug_formatter)
     ch.addFilter(DebugFilter())
     return ch
