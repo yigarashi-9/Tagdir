@@ -4,6 +4,7 @@ import pathlib
 import re
 import subprocess
 import sys
+from typing import Optional
 
 import psutil
 from sqlalchemy import create_engine
@@ -12,14 +13,14 @@ from .fusepy.fuse import FUSE
 from .tagdir import Tagdir
 
 
-def is_tagdir(disk):
+def is_tagdir(disk) -> bool:
     parts = disk.device.split("_")
     if len(parts) != 2:
         return False
     return parts[0] == "Tagdir"
 
 
-def get_mountpoint(name):
+def get_mountpoint(name: Optional[str]) -> Optional[str]:
     tagdirs = list(filter(is_tagdir, psutil.disk_partitions(all=True)))
 
     if name is None and len(tagdirs) == 1:
@@ -35,7 +36,7 @@ def get_mountpoint(name):
     return mountpoint
 
 
-def name_validator(s):
+def name_validator(s: str) -> str:
     r = re.compile(r"[a-z]+")
     if not r.match(s):
         raise argparse.ArgumentTypeError("[a-z]+ is required")
@@ -43,7 +44,7 @@ def name_validator(s):
         return s
 
 
-def mount(args, mountpoint) -> int:
+def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     """
     TODO
     - Exception handling
@@ -60,9 +61,10 @@ def mount(args, mountpoint) -> int:
     engine = create_engine("sqlite:///" + args.db, echo=False)
     FUSE(Tagdir(engine), args.mountpoint, foreground=True, allow_other=True,
          fsname="Tagdir_" + args.name)
+    return 0
 
 
-def mktag(args, mountpoint):
+def mktag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     if mountpoint is None:
         print("mountpoint is not fonund.")
         return -1
@@ -72,7 +74,7 @@ def mktag(args, mountpoint):
     return 0
 
 
-def rmtag(args, mountpoint):
+def rmtag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     if mountpoint is None:
         print("mountpoint is not fonund.")
         return -1
@@ -82,7 +84,7 @@ def rmtag(args, mountpoint):
     return 0
 
 
-def tag(args, mountpoint):
+def tag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     if mountpoint is None:
         print("mountpoint is not fonund.")
         return -1

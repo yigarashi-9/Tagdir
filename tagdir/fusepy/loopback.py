@@ -56,7 +56,10 @@ class Loopback(Operations):
         return os.link(source, target)
 
     listxattr = None
-    mkdir = os.mkdir
+
+    def mkdir(self, path, mode):
+        os.mkdir(path, mode)
+
     mknod = os.mknod
     open = os.open
 
@@ -68,7 +71,8 @@ class Loopback(Operations):
     def readdir(self, path, fh):
         return ['.', '..'] + os.listdir(path)
 
-    readlink = os.readlink
+    def readlink(self, path):
+        os.readlink(path)
 
     def release(self, path, fh):
         return os.close(fh)
@@ -76,7 +80,8 @@ class Loopback(Operations):
     def rename(self, old, new):
         return os.rename(old, new)
 
-    rmdir = os.rmdir
+    def rmdir(self, path):
+        os.rmdir(path)
 
     def statfs(self, path):
         stv = os.statvfs(path)
@@ -91,7 +96,9 @@ class Loopback(Operations):
         with open(path, 'r+') as f:
             f.truncate(length)
 
-    unlink = os.unlink
+    def unlink(self, path):
+        os.unlink(path)
+
     utimens = os.utime
 
     def write(self, path, data, offset, fh):

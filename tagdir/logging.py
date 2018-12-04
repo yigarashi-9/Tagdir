@@ -2,7 +2,7 @@ import logging
 
 
 class DebugFilter(logging.Filter):
-    def __init__(self):
+    def __init__(self) -> None:
         self.id = 1
 
     def filter(self, record):
@@ -14,7 +14,7 @@ class DebugFilter(logging.Filter):
             return False
 
 
-def tagdir_debug_handler():
+def tagdir_debug_handler() -> logging.Handler:
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     debug_formatter = logging.Formatter(

@@ -2,6 +2,7 @@ from errno import EINVAL, ENOENT
 import logging
 from os.path import join
 import pathlib
+from typing import cast
 
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
@@ -165,7 +166,8 @@ class Tagdir(Loopback):
         if entity is None:
             raise FuseOSError(ENOENT)
 
-        return super().mkdir(join(entity.path, rest_path), mode)
+        _rest_path = cast(pathlib.Path, rest_path)  # Never be None
+        return super().mkdir(join(entity.path, _rest_path), mode=mode)
 
     def rmdir(self, path):
         """
@@ -196,7 +198,8 @@ class Tagdir(Loopback):
         if entity is None:
             raise FuseOSError(ENOENT)
 
-        return super().rmdir(join(entity.path, rest_path))
+        _rest_path = cast(pathlib.Path, rest_path)
+        return super().rmdir(join(entity.path, _rest_path))
 
     def symlink(self, target, source):
         """
@@ -345,7 +348,8 @@ class Tagdir(Loopback):
             return [e for e, in res]
 
         # Pass through
-        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        _ent_name = cast(str, ent_name)  # Never be None
+        entity = Entity.get_if_valid(self.session, _ent_name, tags)
         if entity is None:
             raise FuseOSError(ENOENT)
 

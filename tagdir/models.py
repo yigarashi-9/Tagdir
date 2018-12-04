@@ -1,12 +1,14 @@
+from __future__ import annotations
 import os
 import stat
 import time
+from typing import List, Optional
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import backref, relationship
 from sqlalchemy.orm.exc import NoResultFound
-
+from sqlalchemy.orm.session import Session
 
 Base = declarative_base()
 
@@ -16,7 +18,7 @@ tagging = Table("tagging", Base.metadata,
                 Column('tag_id', ForeignKey('tags.id'), primary_key=True))
 
 
-class Attr(Base):
+class Attr(Base):  # type: ignore
     __tablename__ = "attrs"
     id = Column(Integer, primary_key=True)
     st_mode = Column(Integer)
@@ -26,7 +28,7 @@ class Attr(Base):
     st_mtimespec = Column(Integer)
     st_ctimespec = Column(Integer)
 
-    def __init__(self, st_mode):
+    def __init__(self, st_mode: int) -> None:
         self.st_mode = st_mode
         self.st_uid = os.getuid()
         self.st_gid = os.getgid()
@@ -36,19 +38,19 @@ class Attr(Base):
         self.st_ctimespec = now
 
     @staticmethod
-    def new_tag_attr():
+    def new_tag_attr() -> Attr:
         return Attr(0o644 | stat.S_IFDIR)
 
     @staticmethod
-    def new_entity_attr():
+    def new_entity_attr() -> Attr:
         return Attr(0o644 | stat.S_IFLNK)
 
     @staticmethod
-    def new_root_attr():
+    def new_root_attr() -> Attr:
         return Attr(0o644 | stat.S_IFDIR)
 
     @staticmethod
-    def get_root_attr(session):
+    def get_root_attr(session: Session) -> Attr:
         return session.query(Attr).get(1)
 
     def as_dict(self):
@@ -74,16 +76,17 @@ class NodeMixIn:
                             backref=backref(cls.__tablename__, uselist=False))
 
     @classmethod
-    def get_by_name(cls, session, name):
+    def get_by_name(cls, session, name: str):
         return session.query(cls).filter(cls.name == name).one()
 
 
-class Entity(NodeMixIn, Base):
+class Entity(NodeMixIn, Base):  # type: ignore
     __tablename__ = "entities"
     path = Column(String, unique=True)
     tags = relationship("Tag", secondary=tagging, back_populates="entities")
 
-    def __init__(self, name, attr, path, tags):
+    def __init__(self, name: str, attr: Attr,
+                 path: str, tags: List[Tag]) -> None:
         self.name = name
         self.attr = attr
         self.path = path
@@ -93,7 +96,8 @@ class Entity(NodeMixIn, Base):
         return self.name
 
     @staticmethod
-    def get_if_valid(session, ent_name, tags):
+    def get_if_valid(session: Session,
+                     ent_name: str, tags: List[Tag]) -> Optional[Entity]:
         """
         Return entity only if valid tags are specified
         """
@@ -107,25 +111,25 @@ class Entity(NodeMixIn, Base):
 
         return entity
 
-    def has_tags(self, tags):
+    def has_tags(self, tags: List[Tag]) -> bool:
         for tag in tags:
             if tag not in self.tags:
                 return False
         return True
 
 
-class Tag(NodeMixIn, Base):
+class Tag(NodeMixIn, Base):  # type: ignore
     __tablename__ = "tags"
     entities = relationship("Entity", secondary=tagging, back_populates="tags")
 
-    def __init__(self, name, attr):
+    def __init__(self, name: str, attr: Attr) -> None:
         self.name = name
         self.attr = attr
 
     def __str__(self):
         return "@" + self.name
 
-    def remove(self, session):
+    def remove(self, session: Session) -> None:
         """
         remove redundant entities, too
         """

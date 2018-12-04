@@ -1,8 +1,9 @@
 import pathlib
-from typing import List
+from typing import List, Optional, Tuple
 
 
-def parse_path(raw_path: str) -> (List[str], str, pathlib.Path):
+def parse_path(raw_path: str) -> \
+        Tuple[List[str], Optional[str], Optional[pathlib.Path]]:
     """
     Pre-condition: s[0] == "/"
     Expected form of path: /@tag_1/.../@tag_n/ent_name/rest_path
