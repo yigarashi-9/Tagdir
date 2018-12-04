@@ -21,7 +21,8 @@ def main():
     engine = create_engine("sqlite:///test.db", echo=False)
 
     logging.basicConfig(level=logging.DEBUG)
-    FUSE(Tagdir(engine), args.mount, foreground=True, allow_other=True)
+    FUSE(Tagdir(engine), args.mount, foreground=True, allow_other=True,
+         fsname="Tagdir_test")
 
 
 if __name__ == '__main__':
