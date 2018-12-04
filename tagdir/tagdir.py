@@ -19,7 +19,6 @@ class Tagdir(Loopback):
     def __init__(self, engine):
         logger = logging.getLogger(__name__)
         logger.propagate = False
-        logger.setLevel(logging.DEBUG)
         logger.addHandler(tagdir_debug_handler())
         self.logger = logger
 
