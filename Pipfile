@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 sqlalchemy = "*"
 pytest-cov = "*"
+psutil = "*"
 
 [dev-packages]
 tox = "*"
