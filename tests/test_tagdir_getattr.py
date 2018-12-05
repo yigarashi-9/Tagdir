@@ -19,7 +19,7 @@ def setup_func(session):
     session.add_all([attr1, attr2, attr3, attr4, tag1, tag2, entity1, entity2])
 
 
-# Dynamically define tagdir and method_mock fixtures
+# Dynamically define tagdir fixtures
 setup_tagdir_test(setup_func, "getattr")
 
 
@@ -41,11 +41,6 @@ def test_existent_entity1(tagdir):
 def test_existent_entity2(tagdir):
     expected = Entity.get_by_name(tagdir.session, "entity1").attr.as_dict()
     assert tagdir.getattr("/@tag1/@tag2/entity1") == expected
-
-
-def test_pass_through(tagdir, method_mock):
-    tagdir.getattr("/@tag1/entity1/test")
-    method_mock.assert_called_with("/path1/test", None)
 
 
 def test_nonexistent_tag(tagdir):

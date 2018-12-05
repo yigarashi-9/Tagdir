@@ -19,7 +19,7 @@ def setup_func(session):
     session.add_all([attr1, attr2, attr3, attr4, tag1, tag2, entity1, entity2])
 
 
-# Dynamically define tagdir and method_mock fixtures
+# Dynamically define tagdir fixtures
 setup_tagdir_test(setup_func, "access")
 
 
@@ -37,11 +37,6 @@ def test_existent_entity1(tagdir):
 
 def test_existent_entity2(tagdir):
     assert tagdir.access("/@tag1/@tag2/entity1", 0) == 0
-
-
-def test_pass_through(tagdir, method_mock):
-    tagdir.access("/@tag1/entity1/test", 0)
-    method_mock.assert_called_with("/path1/test", 0)
 
 
 def test_nonexistent_tag(tagdir):
