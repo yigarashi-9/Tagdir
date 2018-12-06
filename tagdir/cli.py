@@ -124,6 +124,39 @@ def untag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     return 0
 
 
+def listag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
+    if mountpoint is None:
+        print("mountpoint is not fonund.")
+        return -1
+
+    if args.path is None:
+        s = subprocess.check_output(["ls", "-1", mountpoint]).decode("utf-8")
+        for tag in sorted(s.split("\n")[:-1]):
+            print(tag[1:])
+        return 0
+
+    source = pathlib.Path(args.path).resolve()
+
+    # TODO: Error handling
+    # See https://github.com/xattr/xattr/blob/master/xattr/__init__.py
+    attrs = xattr.xattr(mountpoint + ENTINFO_PATH)
+
+    if source.name not in attrs:
+        print("No tagged entry {}".format(source.name))
+        return -1
+
+    vals = attrs[source.name].decode("utf-8").split(",")
+
+    if str(source) != vals[0]:
+        print("Tagged entry {} is not {}".format(source.name, args.path))
+        return -1
+
+    for tag in sorted(vals[1:]):
+        print(tag)
+
+    return 0
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(description="Tagdir CLI tool")
     subparsers = parser.add_subparsers()
@@ -160,7 +193,11 @@ def _main() -> int:
     parser_tag.add_argument("path", type=str)
     parser_tag.set_defaults(func=untag)
 
-    # TODO: list sub-command
+    parser_tag = subparsers.add_parser("listag")
+    parser_tag.add_argument("--name", type=name_validator, nargs="?",
+                            default=None)
+    parser_tag.add_argument("path", type=str, nargs="?", default=None)
+    parser_tag.set_defaults(func=listag)
 
     args = parser.parse_args()
     mountpoint = get_mountpoint(args.name)
