@@ -1,4 +1,4 @@
-from errno import EACCES, EINVAL, ENOENT
+from errno import EINVAL, ENOENT, ENOSYS
 import logging
 import pathlib
 
@@ -43,7 +43,8 @@ class Tagdir(Operations):
                 return getattr(self, op)(path, *args)
             else:
                 # In most cases, raise error for unsupported operations
-                return super().__call__(op, path, *args)
+                # return super().__call__(op, path, *args)
+                raise FuseOSError(ENOSYS)
 
     def access(self, path, mode):
         # TODO: change st_atim
@@ -107,39 +108,36 @@ class Tagdir(Operations):
         tag_names, ent_name = parse_path(path)
 
         if not tag_names or ent_name is not None:
-            # Cannot make a directory
+            # Cannot create a directory
             raise FuseOSError(EINVAL)
 
-        if ent_name is None:
-            # Create new tags
-            for tag_name in tag_names:
-                try:
-                    Tag.get_by_name(self.session, tag_name)
-                except NoResultFound:
-                    attr = Attr.new_tag_attr()
-                    tag = Tag(tag_name, attr)
-                    self.session.add_all([tag, attr])
-            return None
-        else:
-            raise FuseOSError(EINVAL)
+        # Create new tags
+        for tag_name in tag_names:
+            try:
+                Tag.get_by_name(self.session, tag_name)
+            except NoResultFound:
+                attr = Attr.new_tag_attr()
+                tag = Tag(tag_name, attr)
+                self.session.add_all([tag, attr])
+        return None
 
     def rmdir(self, path):
         """
         Remove @tag_1, ..., @tag_n.
         """
-        if path == "/":
-            raise FuseOSError(EACCES)
-
         tag_names, ent_name = parse_path(path)
 
-        if not tag_names or ent_name is not None:
-            raise FuseOSError(EINVAL)
+        if not tag_names:
+            raise FuseOSError(ENOENT)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
+
+        if ent_name is not None:
+            raise FuseOSError(EINVAL)
 
         # Remove tags
         for tag in tags:
@@ -154,14 +152,17 @@ class Tagdir(Operations):
         """
         tag_names, ent_name = parse_path(target)
 
-        if not tag_names or ent_name is None:
-            raise FuseOSError(EINVAL)
+        if not tag_names:
+            raise FuseOSError(ENOENT)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
+
+        if ent_name is None:
+            raise FuseOSError(EINVAL)
 
         # Do tagging
         source = pathlib.Path(source).resolve()
@@ -193,8 +194,8 @@ class Tagdir(Operations):
         """
         tag_names, ent_name = parse_path(path)
 
-        if not tag_names or ent_name is None:
-            raise FuseOSError(EINVAL)
+        if not tag_names:
+            raise FuseOSError(ENOENT)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
@@ -202,8 +203,11 @@ class Tagdir(Operations):
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
+        if ent_name is None:
+            raise FuseOSError(EINVAL)
+
         # Do untagging
-        entity = Entity.get_by_name(self.session, ent_name)
+        entity = Entity.get_if_valid(self.session, ent_name, tags)
         if entity is None:
             raise FuseOSError(ENOENT)
 
@@ -218,14 +222,17 @@ class Tagdir(Operations):
     def readlink(self, path):
         tag_names, ent_name = parse_path(path)
 
-        if not tag_names or ent_name is None:
-            raise FuseOSError(EINVAL)
+        if not tag_names:
+            raise FuseOSError(ENOENT)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
+
+        if ent_name is None:
+            raise FuseOSError(EINVAL)
 
         entity = Entity.get_if_valid(self.session, ent_name, tags)
         if entity is None:
@@ -244,14 +251,17 @@ class Tagdir(Operations):
 
         tag_names, ent_name = parse_path(path)
 
-        if not tag_names or ent_name is not None:
-            raise FuseOSError(EINVAL)
+        if not tag_names:
+            raise FuseOSError(ENOENT)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
+
+        if ent_name is not None:
+            raise FuseOSError(EINVAL)
 
         # Filter entity by tags
         tag_names = [tag.name for tag in tags]
