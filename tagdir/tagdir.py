@@ -1,4 +1,4 @@
-from errno import EINVAL, ENOENT, ENOSYS
+from errno import EINVAL, ENODATA, ENOENT, ENOSYS
 import logging
 import pathlib
 
@@ -7,11 +7,14 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from .db import session_scope
-from .fusepy.fuse import Operations
+from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
 from .logging import tagdir_debug_handler
 from .models import Attr, Base, Entity, Tag
 from .utils import parse_path
+
+
+ENTINFO_PATH = "/.entinfo"
 
 
 class Tagdir(Operations):
@@ -48,7 +51,7 @@ class Tagdir(Operations):
 
     def access(self, path, mode):
         # TODO: change st_atim
-        if path == "/":
+        if path in ["/", ENTINFO_PATH]:
             return 0
 
         tag_names, ent_name = parse_path(path)
@@ -79,6 +82,9 @@ class Tagdir(Operations):
         if path == "/":
             return Attr.get_root_attr(self.session).as_dict()
 
+        if path == ENTINFO_PATH:
+            return Attr.new_dummy_attr().as_dict()
+
         tag_names, ent_name = parse_path(path)
 
         if not tag_names:
@@ -99,6 +105,23 @@ class Tagdir(Operations):
             return entity.attr.as_dict()
         else:
             raise FuseOSError(ENOENT)
+
+    def getxattr(self, path, name, position=0):
+        if path != ENTINFO_PATH:
+            raise FuseOSError(ENOTSUP)
+
+        try:
+            entity = Entity.get_by_name(self.session, name)
+        except NoResultFound:
+            raise FuseOSError(ENODATA)
+
+        reslist = [entity.path] + [tag.name for tag in entity.tags]
+        return bytes(",".join(reslist), "utf-8")
+
+    def listxattr(self, path):
+        if path != ENTINFO_PATH:
+            raise FuseOSError(ENOTSUP)
+        return [s for s, in self.session.query(Entity.name)]
 
     def mkdir(self, path, mode):
         """

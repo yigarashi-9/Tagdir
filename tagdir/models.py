@@ -50,6 +50,11 @@ class Attr(Base):  # type: ignore
         return Attr(0o644 | stat.S_IFDIR)
 
     @staticmethod
+    def new_dummy_attr() -> Attr:
+        # Used for tagdir.ENTINFO_PATH
+        return Attr(0o644 | stat.S_IFREG)
+
+    @staticmethod
     def get_root_attr(session: Session) -> Attr:
         return session.query(Attr).get(1)
 
