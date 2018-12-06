@@ -8,9 +8,10 @@ from typing import Optional
 
 import psutil
 from sqlalchemy import create_engine
+import xattr
 
 from .fusepy.fuse import FUSE
-from .tagdir import Tagdir
+from .tagdir import ENTINFO_PATH, Tagdir
 
 
 def is_tagdir(disk) -> bool:
@@ -96,6 +97,33 @@ def tag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     return 0
 
 
+def untag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
+    if mountpoint is None:
+        print("mountpoint is not fonund.")
+        return -1
+
+    source = pathlib.Path(args.path).resolve()
+
+    # TODO: Error handling
+    # See https://github.com/xattr/xattr/blob/master/xattr/__init__.py
+    attrs = xattr.xattr(mountpoint + ENTINFO_PATH)
+
+    if source.name not in attrs:
+        print("No tagged entry {}".format(source.name))
+        return -1
+
+    vals = attrs[source.name].decode("utf-8").split(",")
+
+    if str(source) != vals[0]:
+        print("Tagged entry {} is not {}".format(source.name, args.path))
+        return -1
+
+    path = os.path.join(mountpoint, *("@" + tag for tag in args.tags),
+                        source.name)
+    subprocess.run(["unlink", path], capture_output=True)
+    return 0
+
+
 def _main() -> int:
     parser = argparse.ArgumentParser(description="Tagdir CLI tool")
     subparsers = parser.add_subparsers()
@@ -125,7 +153,14 @@ def _main() -> int:
     parser_tag.add_argument("path", type=str)
     parser_tag.set_defaults(func=tag)
 
-    # TODO: untag sub-command, listing tags sub-command
+    parser_tag = subparsers.add_parser("untag")
+    parser_tag.add_argument("--name", type=name_validator, nargs="?",
+                            default=None)
+    parser_tag.add_argument("tags", type=str, nargs="+")
+    parser_tag.add_argument("path", type=str)
+    parser_tag.set_defaults(func=untag)
+
+    # TODO: list sub-command
 
     args = parser.parse_args()
     mountpoint = get_mountpoint(args.name)
