@@ -158,6 +158,16 @@ def listag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
 
 
 def _main() -> int:
+    name_parser = argparse.ArgumentParser(add_help=False)
+    name_parser.add_argument("--name", type=name_validator, nargs="?",
+                              default=None)
+
+    tags_parser = argparse.ArgumentParser(add_help=False)
+    tags_parser.add_argument("tags", type=str, nargs="+")
+
+    path_parser = argparse.ArgumentParser(add_help=False)
+    path_parser.add_argument("path", type=str)
+
     parser = argparse.ArgumentParser(description="Tagdir CLI tool")
     subparsers = parser.add_subparsers()
 
@@ -167,36 +177,24 @@ def _main() -> int:
     parser_mount.add_argument("mountpoint", type=str)
     parser_mount.set_defaults(func=mount)
 
-    parser_mktag = subparsers.add_parser("mktag")
-    parser_mktag.add_argument("--name", type=name_validator, nargs="?",
-                              default=None)
-    parser_mktag.add_argument("tags", type=str, nargs="+")
+    parser_mktag = subparsers.add_parser(
+        "mktag", parents=[name_parser, tags_parser])
     parser_mktag.set_defaults(func=mktag)
 
-    parser_rmtag = subparsers.add_parser("rmtag")
-    parser_rmtag.add_argument("--name", type=name_validator, nargs="?",
-                              default=None)
-    parser_rmtag.add_argument("tags", type=str, nargs="+")
+    parser_rmtag = subparsers.add_parser(
+        "rmtag", parents=[name_parser, tags_parser])
     parser_rmtag.set_defaults(func=rmtag)
 
-    parser_tag = subparsers.add_parser("tag")
-    parser_tag.add_argument("--name", type=name_validator, nargs="?",
-                            default=None)
-    parser_tag.add_argument("tags", type=str, nargs="+")
-    parser_tag.add_argument("path", type=str)
+    parser_tag = subparsers.add_parser(
+        "tag", parents=[name_parser, tags_parser, path_parser])
     parser_tag.set_defaults(func=tag)
 
-    parser_tag = subparsers.add_parser("untag")
-    parser_tag.add_argument("--name", type=name_validator, nargs="?",
-                            default=None)
-    parser_tag.add_argument("tags", type=str, nargs="+")
-    parser_tag.add_argument("path", type=str)
+    parser_tag = subparsers.add_parser(
+        "untag", parents=[name_parser, tags_parser, path_parser])
     parser_tag.set_defaults(func=untag)
 
-    parser_tag = subparsers.add_parser("listag")
-    parser_tag.add_argument("--name", type=name_validator, nargs="?",
-                            default=None)
-    parser_tag.add_argument("path", type=str, nargs="?", default=None)
+    parser_tag = subparsers.add_parser("listag", parents=[name_parser])
+    path_parser.add_argument("path", type=str, nargs="?")
     parser_tag.set_defaults(func=listag)
 
     args = parser.parse_args()
