@@ -3,7 +3,6 @@ import logging
 import pathlib
 
 from sqlalchemy import func
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 
 from .db import session_scope
@@ -18,15 +17,13 @@ ENTINFO_PATH = "/.entinfo"
 
 
 class Tagdir(Operations):
-    def __init__(self, engine, observer):
+    def __init__(self, observer):
         logger = logging.getLogger(__name__)
         logger.propagate = False
         logger.addHandler(tagdir_debug_handler())
         self.logger = logger
 
-        self.session_cls = sessionmaker(bind=engine)
-
-        with session_scope(self.session_cls) as session:
+        with session_scope() as session:
             # Create root attr
             root_attr = Attr.get_root_attr(session)
             if not root_attr:
@@ -39,7 +36,7 @@ class Tagdir(Operations):
         extra = {"op": str(op), "path": str(path), "arguments": repr(args)}
         self.logger.debug("", extra=extra)
 
-        with session_scope(self.session_cls) as session:
+        with session_scope() as session:
             if hasattr(self, op):
                 # Operations specific to tagdir
                 self.session = session
@@ -202,7 +199,7 @@ class Tagdir(Operations):
         except NoResultFound:
             attr = Attr.new_entity_attr()
             entity = Entity(source.name, attr, str(source), [])
-            self.observer.schedule_if_new_path(self.session_cls, entity.path)
+            self.observer.schedule_if_new_path(entity.path)
             self.session.add_all([entity, attr])
 
         for tag in tags:
@@ -239,7 +236,7 @@ class Tagdir(Operations):
 
         if not entity.tags:
             self.delete(entity)
-            self.observer.unschedule_redundant_handlers(self.session_cls)
+            self.observer.unschedule_redundant_handlers()
 
         return None
 

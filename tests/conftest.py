@@ -3,15 +3,14 @@ import sys
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import create_engine
 
-from tagdir.db import session_scope
-from tagdir.models import Base
+from tagdir.db import setup_db, session_scope
 
 
 @pytest.fixture
 def tagdir(_tagdir):
-    session = _tagdir.session_cls()
+    from tagdir.session import Session
+    session = Session()
     _tagdir.session = session
     yield _tagdir
     session.rollback()
@@ -31,11 +30,9 @@ def setup_tagdir_test(func, method_name):
     def _tagdir(_fuse_mock):
         # Import after mocking
         from tagdir.tagdir import Tagdir
-
-        engine = create_engine("sqlite:///:memory:", echo=False)
-        Base.metadata.create_all(engine)
-        tagdir = Tagdir(engine, MagicMock())
-        with session_scope(tagdir.session_cls) as session:
+        setup_db("sqlite:///:memory:")
+        tagdir = Tagdir(MagicMock())
+        with session_scope() as session:
             func(session)
         return tagdir
 

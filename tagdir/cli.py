@@ -7,11 +7,10 @@ import sys
 from typing import Optional
 
 import psutil
-from sqlalchemy import create_engine
 import xattr
 
+from .db import setup_db
 from .fusepy.fuse import FUSE
-from .models import Base
 from .observer import get_observer
 from .tagdir import ENTINFO_PATH, Tagdir
 
@@ -61,12 +60,11 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
         print("{} already exists.".format(args.name))
         return 0
 
-    engine = create_engine("sqlite:///" + args.db, echo=False)
-    Base.metadata.create_all(engine)
+    setup_db("sqlite:///" + args.db)
 
-    observer = get_observer(engine)
+    observer = get_observer()
     observer.start()
-    FUSE(Tagdir(engine, observer), args.mountpoint, foreground=True,
+    FUSE(Tagdir(observer), args.mountpoint, foreground=True,
          allow_other=True, fsname="Tagdir_" + args.name)
     observer.stop()
     observer.join()

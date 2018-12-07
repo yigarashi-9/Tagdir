@@ -1,6 +1,5 @@
 import pathlib
 
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.exc import NoResultFound
 from watchdog import events
 from watchdog.observers import Observer
@@ -10,15 +9,15 @@ from .models import Entity
 
 
 class EntityPathChangeObserver(Observer):  # type: ignore
-    def schedule_if_new_path(self, session_cls, path):
+    def schedule_if_new_path(self, path):
         parent = str(pathlib.Path(path).parent)
         path_set = set(em.watch.path for em in self.emitters)
         if parent not in path_set:
-            event_handler = EntityPathChangeHandler(session_cls, self)
+            event_handler = EntityPathChangeHandler(self)
             self.schedule(event_handler, parent)
 
-    def unschedule_redundant_handlers(self, session_cls):
-        with session_scope(session_cls) as session:
+    def unschedule_redundant_handlers(self):
+        with session_scope() as session:
             ent_path_set = set(path for path, in session.query(Entity.path))
 
         delete_candidate = set()
@@ -32,8 +31,7 @@ class EntityPathChangeObserver(Observer):  # type: ignore
 
 
 class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
-    def __init__(self, session_cls, observer):
-        self.session_cls = session_cls
+    def __init__(self, observer):
         self.observer = observer
         super().__init__()
 
@@ -42,7 +40,7 @@ class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
             return
 
         src_path = pathlib.Path(event.src_path)
-        with session_scope(self.session_cls) as session:
+        with session_scope() as session:
             try:
                 entity = session.query(Entity).filter(
                     Entity.name == src_path.name,
@@ -53,14 +51,14 @@ class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
             dest_path = pathlib.Path(event.dest_path)
             entity.name = dest_path.name
             entity.path = str(dest_path)
-            self.observer.schedule_if_new_path(self.session_cls, dest_path)
+            self.observer.schedule_if_new_path(dest_path)
 
     def on_deleted(self, event):
         if not isinstance(event, events.DirDeletedEvent):
             return
 
         src_path = pathlib.Path(event.src_path)
-        with session_scope(self.session_cls) as session:
+        with session_scope() as session:
             try:
                 entity = session.query(Entity).filter(
                     Entity.name == src_path.name,
@@ -68,16 +66,15 @@ class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
             except NoResultFound:
                 return
             session.delete(entity)
-            self.observer.unschedule_redundant_handlers(self.session_cls)
+            self.observer.unschedule_redundant_handlers()
 
 
-def get_observer(engine):
-    session_cls = sessionmaker(bind=engine)
+def get_observer():
     observer = EntityPathChangeObserver()
-    event_handler = EntityPathChangeHandler(session_cls, observer)
+    event_handler = EntityPathChangeHandler(observer)
 
     path_set = set()
-    with session_scope(session_cls) as session:
+    with session_scope() as session:
         for path, in session.query(Entity.path):
             path_set.add(pathlib.Path(path))
 
