@@ -6,11 +6,12 @@ import pytest
 from sqlalchemy import create_engine
 
 from tagdir.db import session_scope
+from tagdir.models import Base
 
 
 @pytest.fixture
 def tagdir(_tagdir):
-    session = _tagdir.Session()
+    session = _tagdir.session_cls()
     _tagdir.session = session
     yield _tagdir
     session.rollback()
@@ -32,8 +33,9 @@ def setup_tagdir_test(func, method_name):
         from tagdir.tagdir import Tagdir
 
         engine = create_engine("sqlite:///:memory:", echo=False)
-        tagdir = Tagdir(engine)
-        with session_scope(tagdir.Session) as session:
+        Base.metadata.create_all(engine)
+        tagdir = Tagdir(engine, MagicMock())
+        with session_scope(tagdir.session_cls) as session:
             func(session)
         return tagdir
 

@@ -10,7 +10,7 @@ from .db import session_scope
 from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
 from .logging import tagdir_debug_handler
-from .models import Attr, Base, Entity, Tag
+from .models import Attr, Entity, Tag
 from .utils import parse_path
 
 
@@ -18,28 +18,28 @@ ENTINFO_PATH = "/.entinfo"
 
 
 class Tagdir(Operations):
-    def __init__(self, engine):
+    def __init__(self, engine, observer):
         logger = logging.getLogger(__name__)
         logger.propagate = False
         logger.addHandler(tagdir_debug_handler())
         self.logger = logger
 
-        Base.metadata.create_all(engine)
-        self.Session = sessionmaker(bind=engine)
+        self.session_cls = sessionmaker(bind=engine)
 
-        with session_scope(self.Session) as session:
+        with session_scope(self.session_cls) as session:
             # Create root attr
             root_attr = Attr.get_root_attr(session)
             if not root_attr:
                 session.add(Attr.new_root_attr())
 
+        self.observer = observer
         super().__init__()
 
     def __call__(self, op, path, *args):
         extra = {"op": str(op), "path": str(path), "arguments": repr(args)}
         self.logger.debug("", extra=extra)
 
-        with session_scope(self.Session) as session:
+        with session_scope(self.session_cls) as session:
             if hasattr(self, op):
                 # Operations specific to tagdir
                 self.session = session
@@ -196,14 +196,14 @@ class Tagdir(Operations):
 
         try:
             entity = Entity.get_by_name(self.session, ent_name)
+            if entity.path != str(source):
+                # Buggy state: multiple paths for one entity
+                raise FuseOSError(EINVAL)
         except NoResultFound:
             attr = Attr.new_entity_attr()
             entity = Entity(source.name, attr, str(source), [])
+            self.observer.schedule_if_new_path(self.session_cls, entity.path)
             self.session.add_all([entity, attr])
-
-        if entity.path != str(source):
-            # Buggy state: multiple paths for one entity
-            raise FuseOSError(EINVAL)
 
         for tag in tags:
             if tag not in entity.tags:
@@ -238,7 +238,8 @@ class Tagdir(Operations):
             entity.tags.remove(tag)
 
         if not entity.tags:
-            self.session.delete(entity)
+            self.delete(entity)
+            self.observer.unschedule_redundant_handlers(self.session_cls)
 
         return None
 

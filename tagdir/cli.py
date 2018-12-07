@@ -11,6 +11,8 @@ from sqlalchemy import create_engine
 import xattr
 
 from .fusepy.fuse import FUSE
+from .models import Base
+from .observer import get_observer
 from .tagdir import ENTINFO_PATH, Tagdir
 
 
@@ -60,8 +62,14 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
         return 0
 
     engine = create_engine("sqlite:///" + args.db, echo=False)
-    FUSE(Tagdir(engine), args.mountpoint, foreground=True, allow_other=True,
-         fsname="Tagdir_" + args.name)
+    Base.metadata.create_all(engine)
+
+    observer = get_observer(engine)
+    observer.start()
+    FUSE(Tagdir(engine, observer), args.mountpoint, foreground=True,
+         allow_other=True, fsname="Tagdir_" + args.name)
+    observer.stop()
+    observer.join()
     return 0
 
 
@@ -160,7 +168,7 @@ def listag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
 def _main() -> int:
     name_parser = argparse.ArgumentParser(add_help=False)
     name_parser.add_argument("--name", type=name_validator, nargs="?",
-                              default=None)
+                             default=None)
 
     tags_parser = argparse.ArgumentParser(add_help=False)
     tags_parser.add_argument("tags", type=str, nargs="+")

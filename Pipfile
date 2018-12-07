@@ -8,6 +8,7 @@ sqlalchemy = "*"
 pytest-cov = "*"
 psutil = "*"
 xattr = "*"
+watchdog = "*"
 
 [dev-packages]
 tox = "*"
