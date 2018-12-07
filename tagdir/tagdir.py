@@ -10,6 +10,7 @@ from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
 from .logging import tagdir_debug_handler
 from .models import Attr, Entity, Tag
+from .observer import EntityPathChangeObserver
 from .utils import parse_path
 
 
@@ -17,7 +18,7 @@ ENTINFO_PATH = "/.entinfo"
 
 
 class Tagdir(Operations):
-    def __init__(self, observer):
+    def __init__(self):
         logger = logging.getLogger(__name__)
         logger.propagate = False
         logger.addHandler(tagdir_debug_handler())
@@ -29,7 +30,6 @@ class Tagdir(Operations):
             if not root_attr:
                 session.add(Attr.new_root_attr())
 
-        self.observer = observer
         super().__init__()
 
     def __call__(self, op, path, *args):
@@ -199,7 +199,8 @@ class Tagdir(Operations):
         except NoResultFound:
             attr = Attr.new_entity_attr()
             entity = Entity(source.name, attr, str(source), [])
-            self.observer.schedule_if_new_path(entity.path)
+            observer = EntityPathChangeObserver.get_instance()
+            observer.schedule_if_new_path(entity.path)
             self.session.add_all([entity, attr])
 
         for tag in tags:
@@ -236,7 +237,8 @@ class Tagdir(Operations):
 
         if not entity.tags:
             self.delete(entity)
-            self.observer.unschedule_redundant_handlers()
+            observer = EntityPathChangeObserver.get_instance()
+            observer.unschedule_redundant_handlers()
 
         return None
 

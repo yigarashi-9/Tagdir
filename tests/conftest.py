@@ -31,7 +31,7 @@ def setup_tagdir_test(func, method_name):
         # Import after mocking
         from tagdir.tagdir import Tagdir
         setup_db("sqlite:///:memory:")
-        tagdir = Tagdir(MagicMock())
+        tagdir = Tagdir()
         with session_scope() as session:
             func(session)
         return tagdir
