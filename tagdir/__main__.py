@@ -2,8 +2,8 @@ import logging
 
 from .db import setup_db
 from .fusepy.fuse import FUSE
-from .observer import init_observer
 from .tagdir import Tagdir
+from .watch import EntityPathChangeObserver
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
     setup_db("sqlite:///test.db")
 
     logging.basicConfig(level=logging.DEBUG)
-    observer = init_observer()
+    observer = EntityPathChangeObserver.get_instance()
     observer.start()
     FUSE(Tagdir(), args.mount, foreground=True,
          allow_other=True, fsname="Tagdir_test")

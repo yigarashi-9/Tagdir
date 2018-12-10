@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import threading
 
@@ -26,6 +27,23 @@ class Singleton(type):
 
 
 class EntityPathChangeObserver(Observer, metaclass=Singleton):  # type: ignore
+    def __init__(self):
+        super().__init__()
+        event_handler = EntityPathChangeHandler()
+
+        path_set = set()
+        with session_scope() as session:
+            for path, in session.query(Entity.path):
+                path_set.add(pathlib.Path(path))
+
+        for path in path_set:
+            self.schedule(event_handler, path)
+
+    def schedule(self, event_handler, path, recursive=False):
+        logger = logging.getLogger(__name__)
+        logger.debug("Add handler for {}".format(path))
+        return super().schedule(event_handler, path, recursive)
+
     def schedule_if_new_path(self, path):
         parent = str(pathlib.Path(path).parent)
         path_set = set(em.watch.path for em in self.emitters)
@@ -48,6 +66,10 @@ class EntityPathChangeObserver(Observer, metaclass=Singleton):  # type: ignore
 
 
 class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        super().__init__()
+
     def on_moved(self, event):
         if not isinstance(event, events.DirMovedEvent):
             return
@@ -67,6 +89,10 @@ class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
             observer = EntityPathChangeObserver.get_instance()
             observer.schedule_if_new_path(dest_path)
 
+            msg = "Destination of {} is changed from {} to {}".format(
+                entity.name, event.src_path, event.dest_path)
+            self.logger.debug(msg)
+
     def on_deleted(self, event):
         if not isinstance(event, events.DirDeletedEvent):
             return
@@ -83,17 +109,6 @@ class EntityPathChangeHandler(events.FileSystemEventHandler):  # type: ignore
             observer = EntityPathChangeObserver.get_instance()
             observer.unschedule_redundant_handlers()
 
-
-def init_observer():
-    observer = EntityPathChangeObserver.get_instance()
-    event_handler = EntityPathChangeHandler()
-
-    path_set = set()
-    with session_scope() as session:
-        for path, in session.query(Entity.path):
-            path_set.add(pathlib.Path(path))
-
-    for path in path_set:
-        observer.schedule(event_handler, path)
-
-    return observer
+            msg = "{} is deleted because its destination {} is deleted".format(
+                src_path.name, event.src_path)
+            self.logger.debug(msg)

@@ -10,8 +10,8 @@ from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
 from .logging import tagdir_debug_handler
 from .models import Attr, Entity, Tag
-from .observer import EntityPathChangeObserver
 from .utils import parse_path
+from .watch import EntityPathChangeObserver
 
 
 ENTINFO_PATH = "/.entinfo"
