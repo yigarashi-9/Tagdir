@@ -236,7 +236,7 @@ class Tagdir(Operations):
             entity.tags.remove(tag)
 
         if not entity.tags:
-            self.delete(entity)
+            self.session.delete(entity)
             observer = EntityPathChangeObserver.get_instance()
             observer.unschedule_redundant_handlers()
 
