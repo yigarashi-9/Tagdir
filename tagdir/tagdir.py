@@ -120,7 +120,7 @@ class Tagdir(Operations):
             raise FuseOSError(ENOTSUP)
         return [s for s, in self.session.query(Entity.name)]
 
-    def mkdir(self, path, mode):
+    def mkdir(self, path, mode=0o777):
         """
         Create tags if path is /@tag_1/.../@tag_n,
         otherwise raise error.
