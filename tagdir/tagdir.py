@@ -170,7 +170,7 @@ class Tagdir(Operations):
         tag_names, ent_name = parse_path(target)
 
         if not tag_names:
-            raise FuseOSError(ENOENT)
+            raise FuseOSError(EINVAL)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
@@ -184,8 +184,11 @@ class Tagdir(Operations):
         # Do tagging
         source = pathlib.Path(source).resolve()
 
-        if source.name != ent_name or not source.is_absolute():
+        if source.name != ent_name:
             raise FuseOSError(EINVAL)
+
+        if not source.exists():
+            raise FuseOSError(ENOENT)
 
         if not source.is_dir():
             raise FuseOSError(ENOTDIR)
@@ -193,7 +196,7 @@ class Tagdir(Operations):
         try:
             entity = Entity.get_by_name(self.session, ent_name)
             if entity.path != str(source):
-                # Buggy state: multiple paths for one entity
+                # Cannot create multiple links for one directory
                 raise FuseOSError(EINVAL)
         except NoResultFound:
             attr = Attr.new_entity_attr()
