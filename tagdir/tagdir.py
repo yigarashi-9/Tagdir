@@ -1,4 +1,4 @@
-from errno import EINVAL, ENODATA, ENOENT, ENOSYS
+from errno import EINVAL, ENODATA, ENOENT, ENOSYS, ENOTDIR
 import logging
 import pathlib
 
@@ -184,9 +184,11 @@ class Tagdir(Operations):
         # Do tagging
         source = pathlib.Path(source).resolve()
 
-        if source.name != ent_name \
-                or not source.is_absolute() or not source.is_dir():
+        if source.name != ent_name or not source.is_absolute():
             raise FuseOSError(EINVAL)
+
+        if not source.is_dir():
+            raise FuseOSError(ENOTDIR)
 
         try:
             entity = Entity.get_by_name(self.session, ent_name)
