@@ -1,0 +1,1 @@
+ENTINFO_PATH = "/.entinfo"

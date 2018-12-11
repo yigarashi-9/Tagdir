@@ -5,6 +5,7 @@ import pathlib
 from sqlalchemy import func
 from sqlalchemy.orm.exc import NoResultFound
 
+from . import ENTINFO_PATH
 from .db import session_scope
 from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
@@ -12,9 +13,6 @@ from .logging import tagdir_debug_handler
 from .models import Attr, Entity, Tag
 from .utils import parse_path
 from .watch import EntityPathChangeObserver
-
-
-ENTINFO_PATH = "/.entinfo"
 
 
 class Tagdir(Operations):

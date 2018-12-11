@@ -1,8 +1,7 @@
 import pytest
 
 from .conftest import setup_tagdir_test
-from tagdir.tagdir import ENTINFO_PATH
-from tagdir.fusepy.fuse import ENOTSUP
+from tagdir import ENTINFO_PATH
 from tagdir.fusepy.exceptions import FuseOSError
 from tagdir.models import Attr, Entity
 
@@ -33,4 +32,7 @@ def test_correct(tagdir):
 def test_invalid_path(tagdir, input):
     with pytest.raises(FuseOSError) as exc:
         tagdir.getxattr(input, "fail")
+
+    # Import after mocking
+    from tagdir.fusepy.fuse import ENOTSUP
     assert exc.value.errno == ENOTSUP
