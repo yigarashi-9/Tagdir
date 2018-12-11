@@ -147,17 +147,14 @@ class Tagdir(Operations):
         """
         tag_names, ent_name = parse_path(path)
 
-        if not tag_names:
-            raise FuseOSError(ENOENT)
+        if not tag_names or ent_name is not None:
+            raise FuseOSError(EINVAL)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
-
-        if ent_name is not None:
-            raise FuseOSError(EINVAL)
 
         # Remove tags
         for tag in tags:
