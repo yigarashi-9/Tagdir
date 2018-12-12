@@ -1,6 +1,7 @@
 from errno import EINVAL
 
 import pytest
+from sqlalchemy.orm.exc import NoResultFound
 
 from .conftest import setup_tagdir_test
 from tagdir.fusepy.exceptions import FuseOSError
@@ -24,16 +25,22 @@ setup_tagdir_test(setup_func, "mkdir")
 
 def test_normal1(tagdir):
     assert tagdir.mkdir("/@" + name_tag_2) is None
-    assert Tag.get_by_name(tagdir.session, name_tag_1).name == name_tag_1
-    assert Tag.get_by_name(tagdir.session, name_tag_2).name == name_tag_2
+    try:
+        Tag.get_by_name(tagdir.session, name_tag_1)
+        Tag.get_by_name(tagdir.session, name_tag_2)
+    except NoResultFound:
+        pytest.fail("Unexpected NoResultFound error")
 
 
 def test_normal2(tagdir):
     assert tagdir.mkdir(
         "/@" + name_tag_1 + "/@" + name_tag_2 + "/@" + name_tag_3) is None
-    assert Tag.get_by_name(tagdir.session, name_tag_1).name == name_tag_1
-    assert Tag.get_by_name(tagdir.session, name_tag_2).name == name_tag_2
-    assert Tag.get_by_name(tagdir.session, name_tag_3).name == name_tag_3
+    try:
+        Tag.get_by_name(tagdir.session, name_tag_1)
+        Tag.get_by_name(tagdir.session, name_tag_2)
+        Tag.get_by_name(tagdir.session, name_tag_3)
+    except NoResultFound:
+        pytest.fail("Unexpected NoResultFound error")
 
 
 def test_invalid_root(tagdir):
