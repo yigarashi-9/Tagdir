@@ -1,4 +1,4 @@
-from errno import EINVAL, ENOENT, ENOTDIR
+from errno import EINVAL, ENOENT
 
 import pytest
 from sqlalchemy.orm.exc import NoResultFound
