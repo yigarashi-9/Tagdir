@@ -246,7 +246,7 @@ class Tagdir(Operations):
         tag_names, ent_name = parse_path(path)
 
         if not tag_names:
-            raise FuseOSError(ENOENT)
+            raise FuseOSError(EINVAL)
 
         try:
             tags = [Tag.get_by_name(self.session, tag_name)
