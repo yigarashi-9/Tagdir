@@ -93,9 +93,6 @@ def tag(args: argparse.Namespace, mountpoint: str) -> int:
 
 def untag(args: argparse.Namespace, mountpoint: str) -> int:
     source = pathlib.Path(args.path).resolve()
-
-    # TODO: Error handling
-    # See https://github.com/xattr/xattr/blob/master/xattr/__init__.py
     attrs = xattr.xattr(mountpoint + ENTINFO_PATH)
 
     if source.name not in attrs:
@@ -122,9 +119,6 @@ def listag(args: argparse.Namespace, mountpoint: str) -> int:
         return 0
 
     source = pathlib.Path(args.path).resolve()
-
-    # TODO: Error handling
-    # See https://github.com/xattr/xattr/blob/master/xattr/__init__.py
     attrs = xattr.xattr(mountpoint + ENTINFO_PATH)
 
     if source.name not in attrs:
