@@ -186,13 +186,13 @@ def _main() -> int:
     mountpoint = get_mountpoint(args.name)
 
     if args.subparser_name == "mount":
-        mount(args, mountpoint)
-    else:
-        if mountpoint is None:
-            print("mountpoint {} is not fonund.".format(args.name))
-            return -1
-        else:
-            return args.func(args, mountpoint)
+        return mount(args, mountpoint)
+
+    if mountpoint is None:
+        print("mountpoint {} is not fonund.".format(args.name))
+        return -1
+
+    return args.func(args, mountpoint)
 
 
 def main():
