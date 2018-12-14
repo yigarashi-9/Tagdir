@@ -7,4 +7,3 @@ def pytest_sessionstart(session):
     sys.modules["tagdir.fusepy.fuse"] = mock_module
     mock_module.Operations = type("Dummy", (object,), {})
     mock_module.ENOTSUP = 100000  # Dummy value
-

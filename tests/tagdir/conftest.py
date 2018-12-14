@@ -27,4 +27,3 @@ def setup_tagdir_test(func):
 
     caller_globals = inspect.stack()[1][0].f_globals
     caller_globals["_tagdir"] = _tagdir
-
