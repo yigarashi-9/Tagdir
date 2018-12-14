@@ -19,8 +19,8 @@ def setup_func(session):
     session.add_all([attr1, tag1])
 
 
-# Dynamically define tagdir fixtures
-setup_tagdir_test(setup_func, "mkdir")
+# Dynamically define tagdir fixture
+setup_tagdir_test(setup_func)
 
 
 def test_normal1(tagdir):

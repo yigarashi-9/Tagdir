@@ -19,8 +19,8 @@ def setup_func(session):
                      attr_ent, entity1, entity2, entity3])
 
 
-# Dynamically define tagdir fixtures
-setup_tagdir_test(setup_func, "readdir")
+# Dynamically define tagdir fixture
+setup_tagdir_test(setup_func)
 
 
 def test_root(tagdir):

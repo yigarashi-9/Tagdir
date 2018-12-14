@@ -18,8 +18,8 @@ def setup_func(session):
     session.add_all([attr1, attr2, attr3, tag1, tag2, entity1])
 
 
-# Dynamically define tagdir fixtures
-setup_tagdir_test(setup_func, "getxattr")
+# Dynamically define tagdir fixture
+setup_tagdir_test(setup_func)
 
 
 def test_normal(tagdir):

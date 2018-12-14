@@ -14,8 +14,8 @@ def setup_func(session):
     session.add_all([attr1, attr2, entity1, entity2])
 
 
-# Dynamically define tagdir fixtures
-setup_tagdir_test(setup_func, "listxattr")
+# Dynamically define tagdir fixture
+setup_tagdir_test(setup_func)
 
 
 def test_correct(tagdir):

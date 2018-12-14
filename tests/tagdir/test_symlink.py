@@ -19,8 +19,8 @@ def setup_func(session):
     session.add_all([attr1, attr2, tag1, tag2, attr3, entity1])
 
 
-# Dynamically define tagdir fixtures
-setup_tagdir_test(setup_func, "symlink")
+# Dynamically define tagdir fixture
+setup_tagdir_test(setup_func)
 
 
 @pytest.fixture(autouse=True)
