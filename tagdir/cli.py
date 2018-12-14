@@ -11,8 +11,8 @@ import xattr
 
 from .db import setup_db
 from .fusepy.fuse import FUSE
-from .observer import init_observer
 from .tagdir import ENTINFO_PATH, Tagdir
+from .watch import EntityPathChangeObserver
 
 
 def is_tagdir(disk) -> bool:
@@ -62,7 +62,7 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
 
     setup_db("sqlite:///" + args.db)
 
-    observer = init_observer()
+    observer = EntityPathChangeObserver.get_instance()
     observer.start()
     FUSE(Tagdir(), args.mountpoint, foreground=True,
          allow_other=True, fsname="Tagdir_" + args.name)
@@ -71,31 +71,19 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     return 0
 
 
-def mktag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
-    if mountpoint is None:
-        print("mountpoint is not fonund.")
-        return -1
-
+def mktag(args: argparse.Namespace, mountpoint: str) -> int:
     paths = [os.path.join(mountpoint, "@" + tag) for tag in args.tags]
     subprocess.run(["mkdir"] + paths, capture_output=True)
     return 0
 
 
-def rmtag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
-    if mountpoint is None:
-        print("mountpoint is not fonund.")
-        return -1
-
+def rmtag(args: argparse.Namespace, mountpoint: str) -> int:
     paths = [os.path.join(mountpoint, "@" + tag) for tag in args.tags]
     subprocess.run(["rmdir"] + paths, capture_output=True)
     return 0
 
 
-def tag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
-    if mountpoint is None:
-        print("mountpoint is not fonund.")
-        return -1
-
+def tag(args: argparse.Namespace, mountpoint: str) -> int:
     source = str(pathlib.Path(args.path).resolve())
     for tag in args.tags:
         tag_path = os.path.join(mountpoint, "@" + tag)
@@ -103,11 +91,7 @@ def tag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     return 0
 
 
-def untag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
-    if mountpoint is None:
-        print("mountpoint is not fonund.")
-        return -1
-
+def untag(args: argparse.Namespace, mountpoint: str) -> int:
     source = pathlib.Path(args.path).resolve()
 
     # TODO: Error handling
@@ -130,11 +114,7 @@ def untag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     return 0
 
 
-def listag(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
-    if mountpoint is None:
-        print("mountpoint is not fonund.")
-        return -1
-
+def listag(args: argparse.Namespace, mountpoint: str) -> int:
     if args.path is None:
         s = subprocess.check_output(["ls", "-1", mountpoint]).decode("utf-8")
         for tag in sorted(s.split("\n")[:-1]):
@@ -175,13 +155,12 @@ def _main() -> int:
     path_parser.add_argument("path", type=str)
 
     parser = argparse.ArgumentParser(description="Tagdir CLI tool")
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(dest="subparser_name")
 
     parser_mount = subparsers.add_parser("mount")
     parser_mount.add_argument("name", type=name_validator)
     parser_mount.add_argument("db", type=str)
     parser_mount.add_argument("mountpoint", type=str)
-    parser_mount.set_defaults(func=mount)
 
     parser_mktag = subparsers.add_parser(
         "mktag", parents=[name_parser, tags_parser])
@@ -205,7 +184,15 @@ def _main() -> int:
 
     args = parser.parse_args()
     mountpoint = get_mountpoint(args.name)
-    return args.func(args, mountpoint)
+
+    if args.subparser_name == "mount":
+        mount(args, mountpoint)
+    else:
+        if mountpoint is None:
+            print("mountpoint {} is not fonund.".format(args.name))
+            return -1
+        else:
+            return args.func(args, mountpoint)
 
 
 def main():
