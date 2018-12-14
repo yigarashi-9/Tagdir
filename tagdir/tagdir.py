@@ -1,6 +1,7 @@
 from errno import EINVAL, ENODATA, ENOENT, ENOSYS, ENOTDIR
 import logging
 import pathlib
+from typing import List, Optional, Tuple
 
 from sqlalchemy import func
 from sqlalchemy.orm.exc import NoResultFound
@@ -11,8 +12,33 @@ from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
 from .logging import tagdir_debug_handler
 from .models import Attr, Entity, Tag
-from .utils import parse_path
 from .watch import EntityPathChangeObserver
+
+
+def parse_path(raw_path: str) -> Tuple[List[str], Optional[str]]:
+    """
+    Pre-condition: s[0] == "/"
+    Expected form of path: /@tag_1/.../@tag_n/(ent_name)?
+    """
+    tag_names = []
+    ent_name = None
+
+    parts = pathlib.Path(raw_path).parts[1:]
+    index = 0
+
+    for part in parts:
+        if part[0] == "@":
+            tag_names.append(part[1:])
+            index += 1
+        else:
+            break
+
+    rest = parts[index:]
+
+    if len(rest) == 1:
+        ent_name = rest[0]
+
+    return tag_names, ent_name
 
 
 class Tagdir(Operations):

@@ -1,4 +1,4 @@
-from tagdir.utils import parse_path
+from tagdir.tagdir import parse_path
 
 
 def test_twosome():
