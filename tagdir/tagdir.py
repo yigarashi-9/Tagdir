@@ -10,9 +10,32 @@ from . import ENTINFO_PATH
 from .db import session_scope
 from .fusepy.fuse import ENOTSUP, Operations
 from .fusepy.exceptions import FuseOSError
-from .logging import tagdir_debug_handler
 from .models import Attr, Entity, Tag
 from .watch import EntityPathChangeObserver
+
+
+class DebugFilter(logging.Filter):
+    def __init__(self) -> None:
+        self.id = 1
+
+    def filter(self, record):
+        if record.levelno == logging.DEBUG:
+            record.id = self.id
+            self.id += 1
+            return True
+        else:
+            return False
+
+
+def tagdir_debug_handler() -> logging.Handler:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    debug_formatter = logging.Formatter(
+        "%(levelname)s:%(name)s:(%(id)d) %(op)s "
+        "%(path)s %(arguments)s %(message)s")
+    ch.setFormatter(debug_formatter)
+    ch.addFilter(DebugFilter())
+    return ch
 
 
 def parse_path(raw_path: str) -> Tuple[List[str], Optional[str]]:
