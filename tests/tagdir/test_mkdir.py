@@ -24,7 +24,7 @@ setup_tagdir_test(setup_func)
 
 
 def test_normal1(tagdir):
-    assert tagdir.mkdir("/@" + name_tag_2) is None
+    assert tagdir.mkdir(tagdir.session, "/@" + name_tag_2) is None
     try:
         Tag.get_by_name(tagdir.session, name_tag_1)
         Tag.get_by_name(tagdir.session, name_tag_2)
@@ -34,6 +34,7 @@ def test_normal1(tagdir):
 
 def test_normal2(tagdir):
     assert tagdir.mkdir(
+        tagdir.session,
         "/@" + name_tag_1 + "/@" + name_tag_2 + "/@" + name_tag_3) is None
     try:
         Tag.get_by_name(tagdir.session, name_tag_1)
@@ -45,17 +46,17 @@ def test_normal2(tagdir):
 
 def test_invalid_root(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.mkdir("/")
+        tagdir.mkdir(tagdir.session, "/")
     assert exc.value.errno == EINVAL
 
 
 def test_invalid_notag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.mkdir("/entity")
+        tagdir.mkdir(tagdir.session, "/entity")
     assert exc.value.errno == EINVAL
 
 
 def test_invalid_entity(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.mkdir("/@tag_1/entity")
+        tagdir.mkdir(tagdir.session, "/@tag_1/entity")
     assert exc.value.errno == EINVAL

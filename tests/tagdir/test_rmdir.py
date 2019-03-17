@@ -25,14 +25,15 @@ setup_tagdir_test(setup_func)
 
 
 def test_normal1(tagdir):
-    assert tagdir.rmdir("/@" + name_tag_1) is None
+    assert tagdir.rmdir(tagdir.session, "/@" + name_tag_1) is None
     with pytest.raises(NoResultFound):
         Tag.get_by_name(tagdir.session, name_tag_1)
     assert Tag.get_by_name(tagdir.session, name_tag_2).name == name_tag_2
 
 
 def test_normal2(tagdir):
-    assert tagdir.rmdir("/@" + name_tag_1 + "/@" + name_tag_2) is None
+    res = tagdir.rmdir(tagdir.session, "/@" + name_tag_1 + "/@" + name_tag_2)
+    assert res is None
     with pytest.raises(NoResultFound):
         Tag.get_by_name(tagdir.session, name_tag_1)
     with pytest.raises(NoResultFound):
@@ -41,17 +42,17 @@ def test_normal2(tagdir):
 
 def test_invalid_root(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.rmdir("/")
+        tagdir.rmdir(tagdir.session, "/")
     assert exc.value.errno == EINVAL
 
 
 def test_invalid_notag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.rmdir("/entity")
+        tagdir.rmdir(tagdir.session, "/entity")
     assert exc.value.errno == EINVAL
 
 
 def test_nonexistent_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.rmdir("/@tag_3")
+        tagdir.rmdir(tagdir.session, "/@tag_3")
     assert exc.value.errno == ENOENT

@@ -24,12 +24,12 @@ setup_tagdir_test(setup_func)
 
 def test_normal(tagdir):
     expected = b"/path1,tag1,tag2"
-    assert tagdir.getxattr(ENTINFO_PATH, "entity1") == expected
+    assert tagdir.getxattr(tagdir.session, ENTINFO_PATH, "entity1") == expected
 
 
 def test_nonexistent_entity(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getxattr(ENTINFO_PATH, "nonexistent")
+        tagdir.getxattr(tagdir.session, ENTINFO_PATH, "nonexistent")
     assert exc.value.errno == ENODATA
 
 
@@ -41,7 +41,7 @@ def test_nonexistent_entity(tagdir):
 ])
 def test_invalid_path(tagdir, input):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getxattr(input, "fail")
+        tagdir.getxattr(tagdir.session, input, "fail")
 
     # Import after mocking
     from tagdir.fusepy.fuse import ENOTSUP

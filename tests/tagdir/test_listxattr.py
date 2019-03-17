@@ -20,7 +20,7 @@ setup_tagdir_test(setup_func)
 
 def test_correct(tagdir):
     expected = ["entity1", "entity2"]
-    assert tagdir.listxattr(ENTINFO_PATH) == expected
+    assert tagdir.listxattr(tagdir.session, ENTINFO_PATH) == expected
 
 
 @pytest.mark.parametrize("input", [
@@ -31,7 +31,7 @@ def test_correct(tagdir):
 ])
 def test_invalid_path(tagdir, input):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getxattr(input, "fail")
+        tagdir.getxattr(tagdir.session, input, "fail")
 
     # Import after mocking
     from tagdir.fusepy.fuse import ENOTSUP

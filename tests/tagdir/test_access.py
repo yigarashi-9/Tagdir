@@ -24,34 +24,34 @@ setup_tagdir_test(setup_func)
 
 
 def test_root(tagdir):
-    assert tagdir.access("/", 0) == 0
+    assert tagdir.access(tagdir.session, "/", 0) == 0
 
 
 def test_existent_tag1(tagdir):
-    assert tagdir.access("/@tag1", 0) == 0
+    assert tagdir.access(tagdir.session, "/@tag1", 0) == 0
 
 
 def test_existent_entity1(tagdir):
-    assert tagdir.access("/@tag1/entity1", 0) == 0
+    assert tagdir.access(tagdir.session, "/@tag1/entity1", 0) == 0
 
 
 def test_existent_entity2(tagdir):
-    assert tagdir.access("/@tag1/@tag2/entity1", 0) == 0
+    assert tagdir.access(tagdir.session, "/@tag1/@tag2/entity1", 0) == 0
 
 
 def test_nonexistent_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.access("/@non_tag", 0)
+        tagdir.access(tagdir.session, "/@non_tag", 0)
     assert exc.value.errno == ENOENT
 
 
 def test_no_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.access("/entity1", 0)
+        tagdir.access(tagdir.session, "/entity1", 0)
     assert exc.value.errno == ENOENT
 
 
 def test_notag_entity(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.access("/@tag1/entity2", 0)
+        tagdir.access(tagdir.session, "/@tag1/entity2", 0)
     assert exc.value.errno == ENOENT

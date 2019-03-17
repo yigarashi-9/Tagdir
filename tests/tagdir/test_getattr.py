@@ -25,37 +25,37 @@ setup_tagdir_test(setup_func)
 
 def test_root(tagdir):
     expected = Attr.get_root_attr(tagdir.session).as_dict()
-    assert tagdir.getattr("/") == expected
+    assert tagdir.getattr(tagdir.session, "/") == expected
 
 
 def test_existent_tag1(tagdir):
     expected = Tag.get_by_name(tagdir.session, "tag1").attr.as_dict()
-    assert tagdir.getattr("/@tag1") == expected
+    assert tagdir.getattr(tagdir.session, "/@tag1") == expected
 
 
 def test_existent_entity1(tagdir):
     expected = Entity.get_by_name(tagdir.session, "entity1").attr.as_dict()
-    assert tagdir.getattr("/@tag1/entity1") == expected
+    assert tagdir.getattr(tagdir.session, "/@tag1/entity1") == expected
 
 
 def test_existent_entity2(tagdir):
     expected = Entity.get_by_name(tagdir.session, "entity1").attr.as_dict()
-    assert tagdir.getattr("/@tag1/@tag2/entity1") == expected
+    assert tagdir.getattr(tagdir.session, "/@tag1/@tag2/entity1") == expected
 
 
 def test_nonexistent_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getattr("/@non_tag")
+        tagdir.getattr(tagdir.session, "/@non_tag")
     assert exc.value.errno == ENOENT
 
 
 def test_no_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getattr("/entity1")
+        tagdir.getattr(tagdir.session, "/entity1")
     assert exc.value.errno == ENOENT
 
 
 def test_notag_entity(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.getattr("/@tag1/entity2")
+        tagdir.getattr(tagdir.session, "/@tag1/entity2")
     assert exc.value.errno == ENOENT

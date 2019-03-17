@@ -124,11 +124,10 @@ class Tagdir(Loopback):
         self.logger.debug("", extra=extra)
 
         with session_scope() as session:
-            self.session = session
 
             # Operations specific to tagdir
             if op in Tagdir.__dict__:
-                return getattr(self, op)(path, *args)
+                return getattr(self, op)(session, path, *args)
 
             # Meaningless operations
             if op not in Loopback.__dict__:
@@ -159,7 +158,7 @@ class Tagdir(Loopback):
                 path = join(path, rest_path)
             return super().__call__(op, path, *args)
 
-    def access(self, path, mode):
+    def access(self, session, path, mode):
         # TODO: change st_atim
         if path in ["/", ENTINFO_PATH]:
             return 0
@@ -170,7 +169,7 @@ class Tagdir(Loopback):
             raise FuseOSError(ENOENT)
 
         try:
-            tags = [Tag.get_by_name(self.session, tag_name)
+            tags = [Tag.get_by_name(session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
@@ -178,7 +177,7 @@ class Tagdir(Loopback):
         if ent_name is None:
             return 0
 
-        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        entity = Entity.get_if_valid(session, ent_name, tags)
 
         if entity is None:
             raise FuseOSError(ENOENT)
@@ -188,12 +187,12 @@ class Tagdir(Loopback):
         else:
             return super().access(join(entity.path, rest_path), mode)
 
-    def getattr(self, path, fh=None):
+    def getattr(self, session, path, fh=None):
         """
         Return an attr dict corresponding to the path
         """
         if path == "/":
-            return Attr.get_root_attr(self.session).as_dict()
+            return Attr.get_root_attr(session).as_dict()
 
         if path == ENTINFO_PATH:
             return Attr.new_dummy_attr().as_dict()
@@ -204,7 +203,7 @@ class Tagdir(Loopback):
             raise FuseOSError(ENOENT)
 
         try:
-            tags = [Tag.get_by_name(self.session, tag_name)
+            tags = [Tag.get_by_name(session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
@@ -212,7 +211,7 @@ class Tagdir(Loopback):
         if ent_name is None:
             return tags[-1].attr.as_dict()
 
-        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        entity = Entity.get_if_valid(session, ent_name, tags)
 
         if entity is None:
             raise FuseOSError(ENOENT)
@@ -223,26 +222,26 @@ class Tagdir(Loopback):
         else:
             return super().getattr(join(entity.path, rest_path), fh)
 
-    def getxattr(self, path, name, position=0):
+    def getxattr(self, session, path, name, position=0):
         # TODO: Implement pass through
         if path != ENTINFO_PATH:
             raise FuseOSError(ENOTSUP)
 
         try:
-            entity = Entity.get_by_name(self.session, name)
+            entity = Entity.get_by_name(session, name)
         except NoResultFound:
             raise FuseOSError(ENODATA)
 
         reslist = [entity.path] + [tag.name for tag in entity.tags]
         return bytes(",".join(reslist), "utf-8")
 
-    def listxattr(self, path):
+    def listxattr(self, session, path):
         # TODO: Implement pass through
         if path != ENTINFO_PATH:
             raise FuseOSError(ENOTSUP)
-        return [s for s, in self.session.query(Entity.name)]
+        return [s for s, in session.query(Entity.name)]
 
-    def mkdir(self, path, mode=0o777):
+    def mkdir(self, session, path, mode=0o777):
         """
         Create tags if path is /@tag_1/.../@tag_n,
         otherwise raise error.
@@ -253,7 +252,7 @@ class Tagdir(Loopback):
         # Do tagging
         if source:
             try:
-                tags = [Tag.get_by_name(self.session, tag_name)
+                tags = [Tag.get_by_name(session, tag_name)
                         for tag_name in tag_names]
             except NoResultFound:
                 raise FuseOSError(ENOENT)
@@ -267,7 +266,7 @@ class Tagdir(Loopback):
                 raise FuseOSError(ENOTDIR)
 
             try:
-                entity = Entity.get_by_name(self.session, source.name)
+                entity = Entity.get_by_name(session, source.name)
                 if entity.path != str(source):
                     # Cannot create multiple links for one directory
                     raise FuseOSError(EINVAL)
@@ -276,7 +275,7 @@ class Tagdir(Loopback):
                 entity = Entity(source.name, attr, str(source), [])
                 observer = EntityPathChangeObserver.get_instance()
                 observer.schedule_if_new_path(entity.path)
-                self.session.add_all([entity, attr])
+                session.add_all([entity, attr])
 
             for tag in tags:
                 if tag not in entity.tags:
@@ -293,28 +292,28 @@ class Tagdir(Loopback):
         if ent_name is None:
             for tag_name in tag_names:
                 try:
-                    Tag.get_by_name(self.session, tag_name)
+                    Tag.get_by_name(session, tag_name)
                 except NoResultFound:
                     attr = Attr.new_tag_attr()
                     tag = Tag(tag_name, attr)
-                    self.session.add_all([tag, attr])
+                    session.add_all([tag, attr])
             return None
 
         # Pass through
         try:
-            tags = [Tag.get_by_name(self.session, tag_name)
+            tags = [Tag.get_by_name(session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
 
-        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        entity = Entity.get_if_valid(session, ent_name, tags)
         if entity is None:
             raise FuseOSError(ENOENT)
 
         _rest_path = cast(pathlib.Path, rest_path)  # Never be None
         return super().mkdir(join(entity.path, _rest_path), mode=mode)
 
-    def rmdir(self, path):
+    def rmdir(self, session, path):
         """
         Remove @tag_1, ..., @tag_n.
         """
@@ -324,7 +323,7 @@ class Tagdir(Loopback):
             raise FuseOSError(EINVAL)
 
         try:
-            tags = [Tag.get_by_name(self.session, tag_name)
+            tags = [Tag.get_by_name(session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
@@ -332,12 +331,12 @@ class Tagdir(Loopback):
         # Remove tags
         if ent_name is None:
             for tag in tags:
-                tag.remove(self.session)
+                tag.remove(session)
             return None
 
         # Untagging
         if rest_path is None:
-            entity = Entity.get_if_valid(self.session, ent_name, tags)
+            entity = Entity.get_if_valid(session, ent_name, tags)
             if entity is None:
                 raise FuseOSError(ENOENT)
 
@@ -345,27 +344,27 @@ class Tagdir(Loopback):
                 entity.tags.remove(tag)
 
             if not entity.tags:
-                self.session.delete(entity)
+                session.delete(entity)
                 observer = EntityPathChangeObserver.get_instance()
                 observer.unschedule_redundant_handlers()
             return None
 
         # Pass through
-        entity = Entity.get_if_valid(self.session, ent_name, tags)
+        entity = Entity.get_if_valid(session, ent_name, tags)
         if entity is None:
             raise FuseOSError(ENOENT)
 
         _rest_path = cast(pathlib.Path, rest_path)
         return super().rmdir(join(entity.path, _rest_path))
 
-    def readdir(self, path, fh):
+    def readdir(self, session, path, fh):
         """
         If path is
         - /, then list all tags,
         - /@tag_1/../@tag_n, then list all entities filtered by the tags.
         """
         if path == "/":
-            return ["@" + name[0] for name in self.session.query(Tag.name)]
+            return ["@" + name[0] for name in session.query(Tag.name)]
 
         tag_names, ent_name, rest_path = parse_path(path)
 
@@ -373,7 +372,7 @@ class Tagdir(Loopback):
             raise FuseOSError(EINVAL)
 
         try:
-            tags = [Tag.get_by_name(self.session, tag_name)
+            tags = [Tag.get_by_name(session, tag_name)
                     for tag_name in tag_names]
         except NoResultFound:
             raise FuseOSError(ENOENT)
@@ -381,7 +380,7 @@ class Tagdir(Loopback):
         # Filter entity by tags
         if ent_name is None:
             tag_names = [tag.name for tag in tags]
-            res = self.session.query(Entity.name).join(Entity.tags)\
+            res = session.query(Entity.name).join(Entity.tags)\
                 .filter(Tag.name.in_(tag_names))\
                 .group_by(Entity.name)\
                 .having(func.count(Entity.name) == len(tag_names))
@@ -389,7 +388,7 @@ class Tagdir(Loopback):
 
         # Pass through
         _ent_name = cast(str, ent_name)  # Never be None
-        entity = Entity.get_if_valid(self.session, _ent_name, tags)
+        entity = Entity.get_if_valid(session, _ent_name, tags)
         if entity is None:
             raise FuseOSError(ENOENT)
 
@@ -398,7 +397,7 @@ class Tagdir(Loopback):
             path = join(path, rest_path)
         return super().readdir(path, fh)
 
-    def statfs(self, path):
+    def statfs(self, _, path):
         """
         It seems that this function is called only for "/" in normal use.
         Probably, we have to implement much more to deal with general use case

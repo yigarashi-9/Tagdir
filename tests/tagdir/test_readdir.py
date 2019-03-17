@@ -26,30 +26,33 @@ setup_tagdir_test(setup_func, "readdir", RETVAL)
 
 
 def test_root(tagdir):
-    assert sorted(tagdir.readdir("/", None)) == ["@tag1", "@tag2"]
+    res = sorted(tagdir.readdir(tagdir.session, "/", None))
+    assert res == ["@tag1", "@tag2"]
 
 
 def test_filter1(tagdir):
-    assert sorted(tagdir.readdir("/@tag1", None)) == ["entity1", "entity2"]
+    res = sorted(tagdir.readdir(tagdir.session, "/@tag1", None))
+    assert res == ["entity1", "entity2"]
 
 
 def test_filter2(tagdir):
-    assert sorted(tagdir.readdir("/@tag1/@tag2", None)) == ["entity1"]
+    res = sorted(tagdir.readdir(tagdir.session, "/@tag1/@tag2", None))
+    assert res == ["entity1"]
 
 
 def test_nonexistent_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.readdir("/@non_tag", None)
+        tagdir.readdir(tagdir.session, "/@non_tag", None)
     assert exc.value.errno == ENOENT
 
 
 def test_no_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
-        tagdir.readdir("/entity1", None)
+        tagdir.readdir(tagdir.session, "/entity1", None)
     assert exc.value.errno == EINVAL
 
 
 def test_entity(tagdir, method_mock):
-    ret = tagdir.readdir("/@tag1/entity2", None)
+    ret = tagdir.readdir(tagdir.session, "/@tag1/entity2", None)
     assert ret == RETVAL
     method_mock.assert_called_with("/path2", None)
