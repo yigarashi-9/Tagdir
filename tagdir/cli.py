@@ -11,7 +11,7 @@ import xattr
 
 from .db import setup_db
 from .fusepy.fuse import FUSE
-from .tagdir import ENTINFO_PATH, Tagdir
+from .tagdir import ENTINFO_PATH, Tagdir, encode_path
 from .watch import EntityPathChangeObserver
 
 
@@ -61,7 +61,6 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
         return 0
 
     setup_db("sqlite:///" + args.db)
-
     observer = EntityPathChangeObserver.get_instance()
     observer.start()
     FUSE(Tagdir(), args.mountpoint, foreground=True,
@@ -84,10 +83,11 @@ def rmtag(args: argparse.Namespace, mountpoint: str) -> int:
 
 
 def tag(args: argparse.Namespace, mountpoint: str) -> int:
-    source = str(pathlib.Path(args.path).resolve())
+    source = encode_path(str(pathlib.Path(args.path).resolve()))
+    path = mountpoint
     for tag in args.tags:
-        tag_path = os.path.join(mountpoint, "@" + tag)
-        subprocess.run(["ln", "-s", source, tag_path], capture_output=True)
+        path = os.path.join(path, "@" + tag)
+    subprocess.run(["mkdir", os.path.join(path, source)], capture_output=True)
     return 0
 
 
@@ -99,15 +99,9 @@ def untag(args: argparse.Namespace, mountpoint: str) -> int:
         print("No tagged entry {}".format(source.name))
         return -1
 
-    vals = attrs[source.name].decode("utf-8").split(",")
-
-    if str(source) != vals[0]:
-        print("Tagged entry {} is not {}".format(source.name, args.path))
-        return -1
-
     path = os.path.join(mountpoint, *("@" + tag for tag in args.tags),
                         source.name)
-    subprocess.run(["unlink", path], capture_output=True)
+    subprocess.run(["rmdir", path], capture_output=True)
     return 0
 
 

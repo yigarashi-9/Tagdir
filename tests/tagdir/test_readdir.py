@@ -15,12 +15,14 @@ def setup_func(session):
     entity1 = Entity("entity1", attr_ent, "/path1", [tag1, tag2])
     entity2 = Entity("entity2", attr_ent, "/path2", [tag1])
     entity3 = Entity("entity3", attr_ent, "/path3", [])
-    session.add_all([attr_ent, tag1, tag2,
+    session.add_all([attr_tag, tag1, tag2,
                      attr_ent, entity1, entity2, entity3])
 
 
+RETVAL = "retval"
+
 # Dynamically define tagdir fixture
-setup_tagdir_test(setup_func)
+setup_tagdir_test(setup_func, "readdir", RETVAL)
 
 
 def test_root(tagdir):
@@ -47,7 +49,7 @@ def test_no_tag(tagdir):
     assert exc.value.errno == EINVAL
 
 
-def test_entity(tagdir):
-    with pytest.raises(FuseOSError) as exc:
-        tagdir.readdir("/@tag1/entity2", None)
-    assert exc.value.errno == EINVAL
+def test_entity(tagdir, method_mock):
+    ret = tagdir.readdir("/@tag1/entity2", None)
+    assert ret == RETVAL
+    method_mock.assert_called_with("/path2", None)

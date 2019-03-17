@@ -43,7 +43,7 @@ class Attr(Base):  # type: ignore
 
     @staticmethod
     def new_entity_attr() -> Attr:
-        return Attr(0o644 | stat.S_IFLNK)
+        return Attr(0o644 | stat.S_IFDIR)
 
     @staticmethod
     def new_root_attr() -> Attr:

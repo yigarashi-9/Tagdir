@@ -29,15 +29,13 @@ class Singleton(type):
 class EntityPathChangeObserver(Observer, metaclass=Singleton):  # type: ignore
     def __init__(self):
         super().__init__()
-        event_handler = EntityPathChangeHandler()
-
         path_set = set()
         with session_scope() as session:
             for path, in session.query(Entity.path):
                 path_set.add(pathlib.Path(path))
 
         for path in path_set:
-            self.schedule(event_handler, path)
+            self.schedule_if_new_path(path)
 
     def schedule(self, event_handler, path, recursive=False):
         logger = logging.getLogger(__name__)

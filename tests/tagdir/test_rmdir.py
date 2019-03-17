@@ -51,12 +51,6 @@ def test_invalid_notag(tagdir):
     assert exc.value.errno == EINVAL
 
 
-def test_invalid_entity(tagdir):
-    with pytest.raises(FuseOSError) as exc:
-        tagdir.rmdir("/@tag_1/entity")
-    assert exc.value.errno == EINVAL
-
-
 def test_nonexistent_tag(tagdir):
     with pytest.raises(FuseOSError) as exc:
         tagdir.rmdir("/@tag_3")

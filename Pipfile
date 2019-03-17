@@ -9,6 +9,7 @@ pytest-cov = "*"
 psutil = "*"
 xattr = "*"
 watchdog = "*"
+tagdir = {editable = true,path = "."}
 
 [dev-packages]
 tox = "*"

@@ -26,15 +26,10 @@ Args = namedtuple("Args", ("tags", "path"))
 def test_normal(mock_run):
     args = Args(["tag1", "tag2"], "/path/test")
     assert untag(args, "/mountpoint") == 0
-    mock_run.assert_called_with(["unlink", "/mountpoint/@tag1/@tag2/test"],
+    mock_run.assert_called_with(["rmdir", "/mountpoint/@tag1/@tag2/test"],
                                 capture_output=True)
 
 
 def test_nonexistent_entity():
     args = Args(["tag1", "tag2"], "/path/not/found")
-    assert untag(args, "/mountpoint") == -1
-
-
-def test_invalid_path():
-    args = Args(["tag1", "tag2"], "/path/invalid/test")
     assert untag(args, "/mountpoint") == -1
