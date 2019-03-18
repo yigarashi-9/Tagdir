@@ -28,30 +28,6 @@ def decode_path(path):
     return path.replace(DELIMITER, "/")
 
 
-class DebugFilter(logging.Filter):
-    def __init__(self) -> None:
-        self.id = 1
-
-    def filter(self, record):
-        if record.levelno == logging.DEBUG:
-            record.id = self.id
-            self.id += 1
-            return True
-        else:
-            return False
-
-
-def tagdir_debug_handler() -> logging.Handler:
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    debug_formatter = logging.Formatter(
-        "%(levelname)s:%(name)s:(%(id)d) %(op)s "
-        "%(path)s %(arguments)s %(message)s")
-    ch.setFormatter(debug_formatter)
-    ch.addFilter(DebugFilter())
-    return ch
-
-
 def parse_path(raw_path: str) -> \
         Tuple[List[str], Optional[str], Optional[str]]:
     """
@@ -106,10 +82,7 @@ def parse_path_for_tagging(raw_path: str) -> Tuple[List[str], Optional[str]]:
 
 class Tagdir(Loopback):
     def __init__(self):
-        logger = logging.getLogger(__name__)
-        logger.propagate = False
-        logger.addHandler(tagdir_debug_handler())
-        self.logger = logger
+        self.logger = logging.getLogger(__name__)
 
         with session_scope() as session:
             # Create root attr
@@ -120,8 +93,7 @@ class Tagdir(Loopback):
         super().__init__()
 
     def __call__(self, op, path, *args):
-        extra = {"op": str(op), "path": str(path), "arguments": repr(args)}
-        self.logger.debug("", extra=extra)
+        self.logger.debug("{} {} {}".format(op, path, args))
 
         with session_scope() as session:
 

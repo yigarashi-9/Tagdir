@@ -52,15 +52,31 @@ def mount(args: argparse.Namespace, mountpoint: Optional[str]) -> int:
     - Exception handling
     - Daemonizing
     """
-    if args.name is None:
-        print("name option is required.")
-        return 0
 
     if mountpoint:
         print("{} already exists.".format(args.name))
         return 0
 
     setup_db("sqlite:///" + args.db)
+
+    import logging
+    import logging.handlers
+
+    format = "[%(asctime)s - %(levelname)s - %(name)s] %(message)s"
+
+    if args.level == "debug":
+        level = logging.DEBUG
+    elif args.level == "error":
+        level = logging.ERROR
+
+    if args.i:
+        handler = logging.StreamHandler()
+    else:
+        handler = logging.handlers.RotatingFileHandler(
+            "/var/log/tagdir.log", maxBytes=10 ** 8, backupCount=5)
+
+    logging.basicConfig(format=format, level=level, handlers=[handler])
+
     observer = EntityPathChangeObserver.get_instance()
     observer.start()
     FUSE(Tagdir(), args.mountpoint, foreground=True,
@@ -146,6 +162,10 @@ def _main() -> int:
     subparsers = parser.add_subparsers(dest="subparser_name")
 
     parser_mount = subparsers.add_parser("mount")
+    # If True, logs are emitted to STDERR
+    parser_mount.add_argument("-i", action="store_true", default=False)
+    parser_mount.add_argument("--level", choices=["debug", "error"],
+                              default="error")
     parser_mount.add_argument("name", type=name_validator)
     parser_mount.add_argument("db", type=str)
     parser_mount.add_argument("mountpoint", type=str)
